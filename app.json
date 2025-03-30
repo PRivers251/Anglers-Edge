@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "FishermansAssistant",
-    "slug": "FishermansAssistant",
+    "name": "Angler’s Edge",
+    "slug": "anglers-edge",
+    "scheme": "anglersedge",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -23,6 +24,21 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "91acaa12-ec0a-48b4-9924-a266b6bd7ede"
+      }
+    },
+    "owner": "privers251",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/91acaa12-ec0a-48b4-9924-a266b6bd7ede"
+    },
+    "plugins": [
+      "expo-router"
+    ]
   }
 }
