@@ -17,10 +17,15 @@ import { getSpeciesListFromAI } from '../services/adviceService';
 import { fetchLocationAndWeather, getCurrentLocation } from '../services/locationService';
 import { GOOGLE_MAPS_API_KEY } from '@env';
 import styles from '../styles/styles';
+import { supabase } from '../services/supabaseClient';
 
 export default function HomeScreen() {
   const router = useRouter();
 
+  // All useState calls at the top
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [username, setUsername] = useState('');
   const [useCurrentLocation, setUseCurrentLocation] = useState(false);
   const [location, setLocation] = useState(null);
   const [cityState, setCityState] = useState('');
@@ -35,6 +40,36 @@ export default function HomeScreen() {
   const [isFetchingSpecies, setIsFetchingSpecies] = useState(false);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [lastLocationFetch, setLastLocationFetch] = useState(null);
+
+  // Combined useEffect for auth and profile
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+
+      if (session) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', session.user.id)
+          .single();
+        setUsername(data?.username || 'User');
+      } else {
+        router.replace('/login');
+      }
+      setLoading(false);
+    };
+
+    initializeAuth();
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (!session) {
+        router.replace('/login');
+        setLoading(false);
+      }
+    });
+  }, [router]);
 
   const debounce = (func, wait) => {
     let timeout;
@@ -214,6 +249,16 @@ export default function HomeScreen() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      router.replace('/login');
+    } catch (error) {
+      console.error('Logout Error:', error.message);
+    }
+  };
+
   useEffect(() => {
     console.log('Location state updated:', location);
     console.log('Species list updated:', speciesList);
@@ -227,6 +272,14 @@ export default function HomeScreen() {
     hasCoords: !!location?.coords,
   });
 
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.title}>Loading...</Text>
+      </View>
+    );
+  }
+
   return (
     <ImageBackground source={require('assets/angler-casting-reel-into-water.png')} style={styles.background}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardAvoidingContainer}>
@@ -234,6 +287,7 @@ export default function HomeScreen() {
           <View style={styles.content}>
             <View style={styles.header}>
               <Text style={styles.title}>Angler’s Edge</Text>
+              <Text style={styles.title}>Welcome, {username}</Text>
             </View>
             <LocationToggle
               useCurrentLocation={useCurrentLocation}
@@ -257,6 +311,7 @@ export default function HomeScreen() {
             />
             <DateSelector date={date} setDate={setDate} />
             <View style={styles.buttonSection}>
+              <View style={styles.buttonContainer}>
               <TouchableOpacity
                 style={[
                   styles.customButton,
@@ -267,6 +322,14 @@ export default function HomeScreen() {
                 disabled={isLoading || speciesList.length === 0 || (species === 'Other' && !customSpecies) || !location?.coords}
               >
                 <Text style={styles.buttonText}>{isLoading ? 'Loading...' : 'Get Fishing Tips'}</Text>
+              </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.customButton, styles.backButton]} // Reusing backButton style for consistency
+                onPress={handleLogout}
+              >
+                <Text style={styles.buttonText}>Log Out</Text>
               </TouchableOpacity>
             </View>
           </View>

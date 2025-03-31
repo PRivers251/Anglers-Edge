@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchWeatherData } from '../services/weatherService';
 import { fetchWaterData } from '../services/waterService';
 import { getFishingAdvice, getSpeciesTempRange } from '../services/adviceService';
@@ -46,7 +46,7 @@ export default function ResultsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const retryRequest = async (fn, maxRetries = 3, delay = 1000) => { // Increased delay to 60 seconds
+  const retryRequest = async (fn, maxRetries = 3, delay = 1000) => {
     for (let i = 0; i < maxRetries; i++) {
       try {
         return await fn();
@@ -62,7 +62,6 @@ export default function ResultsScreen() {
     }
   };
 
-  // Cache weather data in AsyncStorage
   const cacheWeatherData = async (key, data) => {
     try {
       await AsyncStorage.setItem(key, JSON.stringify(data));
@@ -93,73 +92,76 @@ export default function ResultsScreen() {
         const lat = location.coords.latitude;
         const lon = location.coords.longitude;
 
+        // Fetch weather data
         let forecast;
-        // Create a cache key based on location and date
         const weatherCacheKey = `weather_${lat}_${lon}_${date}`;
         const cachedForecast = await getCachedWeatherData(weatherCacheKey);
-
         if (cachedForecast) {
           forecast = cachedForecast;
-          setForecastData(forecast);
         } else if (weatherData) {
           forecast = { forecastMetrics: weatherData, dailyForecasts: [] };
-          setForecastData(forecast);
           await cacheWeatherData(weatherCacheKey, forecast);
         } else {
-          try {
-            forecast = await retryRequest(() => fetchWeatherData(lat, lon, date));
-            setForecastData(forecast);
-            await cacheWeatherData(weatherCacheKey, forecast);
-          } catch (err) {
-            throw new Error(`Weather Data Fetch Failed: ${err.message}`);
-          }
+          forecast = await retryRequest(() => fetchWeatherData(lat, lon, date));
+          await cacheWeatherData(weatherCacheKey, forecast);
         }
+        setForecastData(forecast);
 
-        let water;
+        // Fetch water data
+        let water = null;
         try {
           water = await retryRequest(() => fetchWaterData(lat, lon, date, forecast.dailyForecasts || []));
           setWaterData(water);
         } catch (err) {
-          throw new Error(`Water Data Fetch Failed: ${err.message}`);
+          console.error('Water Data Error:', err.message);
+          setError(`Water Data Fetch Failed: ${err.message}`);
         }
 
-        let speciesRange;
+        // Fetch species temp range
+        let speciesRange = null;
         try {
           speciesRange = await retryRequest(() => getSpeciesTempRange(species));
           setTempRange(speciesRange);
         } catch (err) {
-          throw new Error(`Species Temp Range Fetch Failed: ${err.message}`);
+          console.error('Species Temp Range Error:', err.message);
+          setError(prev => prev ? `${prev}; Species Temp Range Fetch Failed: ${err.message}` : `Species Temp Range Fetch Failed: ${err.message}`);
         }
 
-        let adviceResult;
+        // Fetch fishing advice with fetched water and temp range
         try {
-          adviceResult = await retryRequest(() =>
+          const adviceResult = await retryRequest(() =>
             getFishingAdvice(location, species, cityState, forecast.forecastMetrics, water, speciesRange)
           );
           setAdvice(adviceResult);
         } catch (err) {
-          throw new Error(`Fishing Advice Fetch Failed: ${err.message}`);
+          console.error('Fishing Advice Error:', err.message);
+          setAdvice({
+            bait: 'Spinners or worms',
+            strategy: 'Fish near cover or deep pools, adjusted for recent weather.',
+            additional_notes: 'Fallback advice due to API error.'
+          });
+          setError(prev => prev ? `${prev}; Fishing Advice Fetch Failed: ${err.message}` : `Fishing Advice Fetch Failed: ${err.message}`);
         }
 
-        const rating = calculateFishingScore(forecast.forecastMetrics, water, speciesRange);
-        setForecastData({ ...forecast.forecastMetrics, rating });
+        // Calculate rating and update forecastData
+        if (forecast?.forecastMetrics) {
+          const rating = calculateFishingScore(forecast.forecastMetrics, water, speciesRange);
+          setForecastData(prev => ({ ...prev, forecastMetrics: { ...prev.forecastMetrics, rating } }));
+        }
       } catch (err) {
-        console.error('Results Data Error:', err.message);
+        console.error('Initial Fetch Error:', err.message);
         setError(err.message);
-        setAdvice(null);
         setForecastData(null);
-        setWaterData(null);
-        setTempRange(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
-
     fetchData();
   }, [location, species, cityState, weatherData, date]);
 
   const calculateFishingScore = (forecastMetrics, waterMetrics, speciesTempRange) => {
     let score = 50;
-    if (waterMetrics.waterTempF && speciesTempRange) {
+    if (waterMetrics?.waterTempF && speciesTempRange) {
       if (waterMetrics.waterTempF >= speciesTempRange.min && waterMetrics.waterTempF <= speciesTempRange.max) score += 20;
       else if (waterMetrics.waterTempF < speciesTempRange.min - 10 || waterMetrics.waterTempF > speciesTempRange.max + 10) score -= 10;
     }
@@ -176,7 +178,7 @@ export default function ResultsScreen() {
       else if (forecastMetrics.moonPhase === 0.25 || forecastMetrics.moonPhase === 0.75) score += 5;
       else if (forecastMetrics.moonPhase > 0 && forecastMetrics.moonPhase < 1) score += 3;
     }
-    if (waterMetrics.gageHeightFt !== null) score += 5;
+    if (waterMetrics?.gageHeightFt !== null) score += 5;
 
     return Math.round((Math.max(0, Math.min(100, score)) / 100) * 5) || 1;
   };
@@ -200,19 +202,19 @@ export default function ResultsScreen() {
           <Text style={styles.title}>Fishing Advice for {cityState} - {species || 'Unknown Species'}</Text>
         </View>
         <View style={styles.forecastSection}>
-          {forecastData ? (
+          {forecastData?.forecastMetrics ? (
             <View style={styles.forecastCard}>
               <Text style={styles.forecastField}><Text style={styles.label}>Date: </Text>{formatDate(date)}</Text>
-              <Text style={styles.forecastField}><Text style={styles.label}>Temperature: </Text>{forecastData.lowTempF}–{forecastData.highTempF}°F</Text>
-              <Text style={styles.forecastField}><Text style={styles.label}>Precipitation: </Text>{forecastData.totalPrecipIn} in</Text>
-              <Text style={styles.forecastField}><Text style={styles.label}>Wind Speed: </Text>{forecastData.avgWindMph} mph</Text>
+              <Text style={styles.forecastField}><Text style={styles.label}>Temperature: </Text>{forecastData.forecastMetrics.lowTempF}–{forecastData.forecastMetrics.highTempF}°F</Text>
+              <Text style={styles.forecastField}><Text style={styles.label}>Precipitation: </Text>{forecastData.forecastMetrics.totalPrecipIn} in</Text>
+              <Text style={styles.forecastField}><Text style={styles.label}>Wind Speed: </Text>{forecastData.forecastMetrics.avgWindMph} mph</Text>
               {waterData?.waterTempF && (
                 <Text style={styles.forecastField}><Text style={styles.label}>Water Temp: </Text>{waterData.waterTempF.toFixed(1)}°F {parsedDate > new Date() ? '(forecasted)' : ''}</Text>
               )}
               {waterData?.gageHeightFt && (
                 <Text style={styles.forecastField}><Text style={styles.label}>Water Level: </Text>{waterData.gageHeightFt.toFixed(2)} ft {parsedDate > new Date() ? '(forecasted)' : ''}</Text>
               )}
-              <Text style={styles.forecastField}><Text style={styles.label}>Fishing Conditions: </Text>{'★'.repeat(forecastData.rating)}{'☆'.repeat(5 - forecastData.rating)}</Text>
+              <Text style={styles.forecastField}><Text style={styles.label}>Fishing Conditions: </Text>{'★'.repeat(forecastData.forecastMetrics.rating)}{'☆'.repeat(5 - forecastData.forecastMetrics.rating)}</Text>
             </View>
           ) : error ? (
             <Text style={styles.errorText}>Error: {error}</Text>
@@ -225,10 +227,10 @@ export default function ResultsScreen() {
             <View style={styles.adviceCard}>
               {advice && (
                 <>
-                  <Text style={styles.field}><Text style={styles.label}>Bait: </Text><Text>{advice.bait || 'Not specified'}</Text></Text>
-                  <Text style={styles.field}><Text style={styles.label}>Strategy: </Text><Text>{advice.strategy || 'Not specified'}</Text></Text>
+                  <Text style={styles.field}><Text style={styles.label}>Bait: </Text>{advice.bait || 'Not specified'}</Text>
+                  <Text style={styles.field}><Text style={styles.label}>Strategy: </Text>{advice.strategy || 'Not specified'}</Text>
                   {advice.additional_notes && (
-                    <Text style={styles.field}><Text style={styles.label}>Additional Notes: </Text><Text>{advice.additional_notes}</Text></Text>
+                    <Text style={styles.field}><Text style={styles.label}>Additional Notes: </Text>{advice.additional_notes}</Text>
                   )}
                 </>
               )}

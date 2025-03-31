@@ -15,7 +15,7 @@ module.exports = function (api) {
       [
         'module-resolver',
         {
-          root: ['./'],
+          root: ['./app/index.js'],
           extensions: ['.js', '.jsx', '.ts', '.tsx', '.png'], // Add .png to handle image assets
           alias: {
             components: './components',

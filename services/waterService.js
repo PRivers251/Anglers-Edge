@@ -1,5 +1,25 @@
 import axios from 'axios';
 
+const forecastWaterData = (waterTempF, gageHeightFt, daysAhead, dailyForecasts) => {
+  const forecast = [];
+  const baseTemp = waterTempF || 60; // Default to 60°F if no water temp available
+  const baseHeight = gageHeightFt || 1; // Default to 1 ft if no gage height available
+
+  for (let i = 0; i < daysAhead; i++) {
+    // Simple forecasting logic: Adjust water temp based on air temp trends, height based on precipitation
+    const dayForecast = dailyForecasts[i] || dailyForecasts[dailyForecasts.length - 1] || {};
+    const tempAdjustment = dayForecast.temp ? (dayForecast.temp.max - 32) * 0.05 : 0.5; // Rough estimate: 5% of max air temp influences water
+    const heightAdjustment = dayForecast.rain ? dayForecast.rain * 0.1 : 0.05; // Rough estimate: Rain increases water level slightly
+
+    forecast.push({
+      waterTempF: baseTemp + tempAdjustment * (i + 1),
+      gageHeightFt: baseHeight + heightAdjustment * (i + 1),
+    });
+  }
+
+  return forecast;
+};
+
 export const fetchWaterData = async (lat, lon, date, dailyForecasts) => {
   const westLon = (lon - 0.5).toFixed(6);
   const southLat = (lat - 0.5).toFixed(6);
@@ -45,5 +65,3 @@ export const fetchWaterData = async (lat, lon, date, dailyForecasts) => {
 
   return waterMetrics;
 };
-
-// No changes needed in forecastWaterData as it uses dailyForecasts from weatherService

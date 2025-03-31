@@ -3,7 +3,13 @@ import { StyleSheet } from 'react-native';
 export default StyleSheet.create({
   background: { flex: 1, width: '100%', height: '100%' },
   keyboardAvoidingContainer: { flex: 1 },
-  container: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)' },
+  
+  container: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    width: '100%',
+   },
+  
   scrollContent: { flexGrow: 1 },
   content: { paddingVertical: 20 },
   header: { paddingHorizontal: 30, alignItems: 'center', marginBlock: 50 },
@@ -27,11 +33,11 @@ export default StyleSheet.create({
   locationText: { fontSize: 16, color: '#fff', textAlign: 'center', marginBottom: 10, textShadowColor: '#000', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 2 },
   
   input: { 
-    height: 40, 
+    height: 50, 
     borderColor: '#ccc', 
     borderWidth: 1, 
     borderRadius: 8, 
-    paddingHorizontal: 10, 
+    paddingHorizontal: 15, 
     marginBottom: 10,
     backgroundColor: 'rgba(255, 255, 255, 0.9)', 
     color: '#333', 
@@ -57,12 +63,50 @@ export default StyleSheet.create({
     marginBottom: 10,
     textAlign: 'center'
   },
+
+
+inputLoginSection: {
+  marginBlock: 50,
+},
+
+containerLogin: {
+  maxWidth: '95%',
+  display: 'flex',
+  flexDirection: 'column',
+  marginInline: 'auto',
+  minHeight: '100%',
+  justifyContent: 'center',
+},
+
+buttonContainer: {
+  marginBlock: 10,
+  width: '100%',
+},
   
   picker: { height: 200, width: '100%', backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: 8, textAlignVertical: 'center' },
   placeholder: { fontSize: 16, color: '#fff', marginVertical: 20, textAlign: 'center', textShadowColor: '#000', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 2 },
   getSpecies: { fontWeight: '700' },
-  buttonSection: { paddingHorizontal: 30, alignItems: 'center', marginBottom: 20 },
-  customButton: { backgroundColor: '#00CED1', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 5, width: '100%' },
+  
+  buttonSection: {  
+    alignItems: 'center', 
+    marginBottom: 20 
+  },
+  
+  customButton: { 
+    backgroundColor: '#00CED1', 
+    paddingVertical: 12, 
+    paddingHorizontal: 20, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.3, 
+    shadowRadius: 4, 
+    elevation: 5, 
+    width: '100%' 
+  },
+  
   disabledButton: { backgroundColor: '#A9A9A9', opacity: 0.7 },
   buttonText: { fontSize: 16, color: '#fff', fontWeight: '600' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' },
