@@ -1,305 +1,109 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter } from 'expo-router';
-import {
-  View,
-  Text,
-  ImageBackground,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  TouchableOpacity,
-} from 'react-native';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ImageBackground, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Image, Linking } from 'react-native';
 import LocationToggle from '../components/LocationToggle';
 import SpeciesPicker from '../components/SpeciesPicker';
 import DateSelector from '../components/DateSelector';
-import { getSpeciesListFromAI } from '../services/adviceService';
-import { fetchLocationAndWeather, getCurrentLocation } from '../services/locationService';
-import { GOOGLE_MAPS_API_KEY } from '@env';
-import styles from '../styles/styles';
+import { GlobalStyles } from '../styles/GlobalStyles';
+import { HomeStyles } from '../styles/HomeStyles';
+import { useAuth } from '../hooks/useAuth';
+import { useLocation } from '../hooks/useLocation';
+import { useSpecies } from '../hooks/useSpecies';
+import { useFormSubmission } from '../hooks/useFormSubmission';
 import { supabase } from '../services/supabaseClient';
+import * as ExpoLinking from 'expo-linking';
 
 export default function HomeScreen() {
-  const router = useRouter();
-
-  // All useState calls at the top
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [username, setUsername] = useState('');
-  const [useCurrentLocation, setUseCurrentLocation] = useState(false);
-  const [location, setLocation] = useState(null);
-  const [cityState, setCityState] = useState('');
-  const [manualCity, setManualCity] = useState('');
-  const [manualState, setManualState] = useState('');
-  const [species, setSpecies] = useState('');
-  const [customSpecies, setCustomSpecies] = useState('');
+  const { username, loading, handleLogout } = useAuth();
+  const { useCurrentLocation, setUseCurrentLocation, location, setLocation, cityState, manualCity, manualState, setManualCity, setManualState, isFetchingLocation, resolveManualLocation } = useLocation();
+  const { species, setSpecies, customSpecies, setCustomSpecies, speciesList, weatherData, isFetchingSpecies, handleFetchSpecies } = useSpecies();
   const [date, setDate] = useState(new Date());
-  const [speciesList, setSpeciesList] = useState([]);
-  const [weatherData, setWeatherData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isFetchingSpecies, setIsFetchingSpecies] = useState(false);
-  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
-  const [lastLocationFetch, setLastLocationFetch] = useState(null);
-
-  // Combined useEffect for auth and profile
-  useEffect(() => {
-    const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-
-      if (session) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('username')
-          .eq('id', session.user.id)
-          .single();
-        setUsername(data?.username || 'User');
-      } else {
-        router.replace('/login');
-      }
-      setLoading(false);
-    };
-
-    initializeAuth();
-
-    supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (!session) {
-        router.replace('/login');
-        setLoading(false);
-      }
-    });
-  }, [router]);
-
-  const debounce = (func, wait) => {
-    let timeout;
-    return (...args) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), wait);
-    };
-  };
-
-  const initializeCurrentLocation = useCallback(async () => {
-    setIsFetchingLocation(true);
-    if (lastLocationFetch) {
-      setLocation(lastLocationFetch);
-      try {
-        const response = await axios.get(
-          `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lastLocationFetch.coords.latitude},${lastLocationFetch.coords.longitude}&key=${GOOGLE_MAPS_API_KEY}`
-        );
-        if (response.data.results && response.data.results.length > 0) {
-          const addressComponents = response.data.results[0].address_components;
-          const city = addressComponents.find(comp => comp.types.includes('locality'))?.long_name || 'Unknown City';
-          const state = addressComponents.find(comp => comp.types.includes('administrative_area_level_1'))?.short_name || 'Unknown State';
-          const resolvedCityState = `${city}, ${state}`;
-          setCityState(resolvedCityState);
-          setManualCity(city);
-          setManualState(state);
-        } else {
-          throw new Error('No results found for geocoding');
-        }
-      } catch (error) {
-        console.error('Geocoding Error:', error.message);
-        setCityState('Location unavailable');
-        setManualCity('Unknown City');
-        setManualState('Unknown State');
-      }
-      setIsFetchingLocation(false);
-      return;
-    }
-
-    const loc = await getCurrentLocation();
-    if (loc) {
-      setLocation(loc);
-      setLastLocationFetch(loc);
-      try {
-        const response = await axios.get(
-          `https://maps.googleapis.com/maps/api/geocode/json?latlng=${loc.coords.latitude},${loc.coords.longitude}&key=${GOOGLE_MAPS_API_KEY}`
-        );
-        if (response.data.results && response.data.results.length > 0) {
-          const addressComponents = response.data.results[0].address_components;
-          const city = addressComponents.find(comp => comp.types.includes('locality'))?.long_name || 'Unknown City';
-          const state = addressComponents.find(comp => comp.types.includes('administrative_area_level_1'))?.short_name || 'Unknown State';
-          const resolvedCityState = `${city}, ${state}`;
-          setCityState(resolvedCityState);
-          setManualCity(city);
-          setManualState(state);
-        } else {
-          throw new Error('No results found for geocoding');
-        }
-      } catch (error) {
-        console.error('Geocoding Error:', error.message);
-        setCityState('Location unavailable');
-        setManualCity('Unknown City');
-        setManualState('Unknown State');
-      }
-    } else {
-      console.error('Location permission denied or fetch failed');
-      setCityState('Location permission denied');
-    }
-    setIsFetchingLocation(false);
-  }, [lastLocationFetch]);
-
-  const debouncedInitializeCurrentLocation = useMemo(
-    () => debounce(initializeCurrentLocation, 1000),
-    [initializeCurrentLocation]
-  );
+  const [timeOfDay, setTimeOfDay] = useState('Morning');
+  const { isLoading, handleSubmit } = useFormSubmission(location, species, customSpecies, cityState, weatherData, date, timeOfDay);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   useEffect(() => {
-    if (useCurrentLocation) {
-      debouncedInitializeCurrentLocation();
-    } else {
-      if (location && !manualCity && !manualState) {
-        setLocation(null);
-        setLastLocationFetch(null);
-        setIsFetchingLocation(false);
-        setCityState('');
-        setSpeciesList([]);
-        setWeatherData(null);
-        setCustomSpecies('');
-        setDate(new Date());
-      }
-    }
-  }, [useCurrentLocation, manualCity, manualState, debouncedInitializeCurrentLocation]);
-
-  const handleFetchSpecies = async () => {
-    setIsFetchingSpecies(true);
-    const targetCityState = useCurrentLocation ? cityState : `${manualCity}, ${manualState}`;
-    if (!targetCityState) {
-      console.error('No location specified');
-      setSpeciesList([]);
-      setIsFetchingSpecies(false);
-      return;
-    }
-    setCityState(targetCityState);
-
-    let loc = useCurrentLocation ? location : null;
-    if (!useCurrentLocation) {
-      const result = await fetchLocationAndWeather(false, targetCityState, null);
-      loc = result.loc;
-      console.log('Manual location result:', loc);
-      if (!loc?.coords) {
-        console.error('Failed to resolve location coordinates:', {
-          targetCityState,
-          manualCity,
-          manualState,
+    const handleDeepLink = async (event) => {
+      const { path, queryParams } = ExpoLinking.parse(event.url);
+      if (path === 'auth/v1/verify' && queryParams.type === 'signup' && queryParams.token) {
+        setIsVerifying(true);
+        const { error } = await supabase.auth.verifyOtp({
+          token: queryParams.token,
+          type: 'signup',
         });
-        setSpeciesList([]);
-        setIsFetchingSpecies(false);
-        return;
+        setIsVerifying(false);
+        if (error) {
+          console.error('Verification Error:', error.message);
+          alert('Failed to confirm your account. Please try again or contact Patrick@ProAnglerAI.com for support.');
+        } else {
+          alert('Account confirmed! Please log in to start fishing smarter with ProAnglerAI.');
+        }
       }
-      setLocation(loc);
-      setLastLocationFetch(loc);
-    }
-
-    try {
-      const weather = useCurrentLocation
-        ? (await fetchLocationAndWeather(true, targetCityState, loc)).weather
-        : null;
-      setWeatherData(weather);
-      const speciesData = await getSpeciesListFromAI(targetCityState);
-      const newSpeciesList = [...speciesData, 'Other'];
-      setSpeciesList(newSpeciesList);
-      setSpecies('');
-      setCustomSpecies('');
-      console.log('New species list:', newSpeciesList);
-    } catch (error) {
-      console.error('Fetch Error:', error.message);
-      const fallbackSpecies = await getSpeciesListFromAI('Location unavailable');
-      setSpeciesList([...fallbackSpecies, 'Other']);
-      setCityState('Location unavailable');
-      setWeatherData(null);
-      setCustomSpecies('');
-    } finally {
-      setIsFetchingSpecies(false);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (isLoading || !location?.coords) return;
-    setIsLoading(true);
-    const finalSpecies = species === 'Other' ? customSpecies : species;
-    const localDate = new Date(date);
-    localDate.setHours(0, 0, 0, 0);
-    const formattedDate = localDate.toISOString().split('T')[0];
-
-    const simplifiedLocation = {
-      coords: {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      },
     };
-    const simplifiedWeatherData = weatherData ? { ...weatherData } : null;
 
-    try {
-      router.push({
-        pathname: '/results',
-        params: {
-          location: JSON.stringify(simplifiedLocation),
-          species: finalSpecies,
-          cityState,
-          weatherData: simplifiedWeatherData ? JSON.stringify(simplifiedWeatherData) : null,
-          date: formattedDate,
-        },
-      });
-    } catch (error) {
-      console.error('Navigation Error:', error.message);
-    } finally {
-      setIsLoading(false);
+    // Handle initial deep link when app opens
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink({ url });
+    });
+
+    // Listen for deep links while app is running
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+    return () => subscription.remove();
+  }, []);
+
+  const fetchSpecies = async () => {
+    let loc = location;
+    if (!useCurrentLocation) {
+      loc = await resolveManualLocation(`${manualCity}, ${manualState}`);
+      if (loc) setLocation(loc);
+    }
+    if (loc) {
+      await handleFetchSpecies(useCurrentLocation, cityState, manualCity, manualState, loc);
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      router.replace('/login');
-    } catch (error) {
-      console.error('Logout Error:', error.message);
-    }
-  };
-
-  useEffect(() => {
-    console.log('Location state updated:', location);
-    console.log('Species list updated:', speciesList);
-  }, [location, speciesList]);
-
-  console.log('Button conditions:', {
-    isLoading,
-    speciesListLength: speciesList.length,
-    species,
-    customSpecies,
-    hasCoords: !!location?.coords,
-  });
-
-  if (loading) {
+  if (loading || isVerifying) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.title}>Loading...</Text>
+      <View style={GlobalStyles.loadingContainer}>
+        <Text style={GlobalStyles.title}>{isVerifying ? 'Verifying your account...' : 'Loading...'}</Text>
       </View>
     );
   }
 
+  console.log('HomeScreen Render Props:', {
+    username,
+    cityState,
+    species,
+    speciesList,
+    timeOfDay,
+    loading,
+    isLoading,
+    isFetchingSpecies,
+    isFetchingLocation,
+  });
+
   return (
-    <ImageBackground source={require('assets/angler-casting-reel-into-water.png')} style={styles.background}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardAvoidingContainer}>
-        <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-          <View style={styles.content}>
-            <View style={styles.header}>
-              <Text style={styles.title}>Angler’s Edge</Text>
-              <Text style={styles.title}>Welcome, {username}</Text>
+    <ImageBackground source={require('assets/angler-casting-reel-into-water.png')} style={GlobalStyles.background}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={GlobalStyles.keyboardAvoidingContainer}>
+        <ScrollView style={GlobalStyles.container} contentContainerStyle={GlobalStyles.scrollContent}>
+          <View style={GlobalStyles.content}>
+            <View style={GlobalStyles.header}>
+              <View style={HomeStyles.logoContainer}>
+                <Image source={require('assets/ProAnglerAI-WhiteBackground.png')} style={HomeStyles.logo} resizeMode="contain" />
+              </View>
+              <Text style={GlobalStyles.title}>ProAnglerAI</Text>
+              <Text style={GlobalStyles.title}>Welcome {username || 'User'}</Text>
             </View>
             <LocationToggle
               useCurrentLocation={useCurrentLocation}
               setUseCurrentLocation={setUseCurrentLocation}
-              cityState={cityState}
+              cityState={cityState || 'Loading...'}
               manualCity={manualCity}
               manualState={manualState}
               setManualCity={setManualCity}
               setManualState={setManualState}
               isFetchingSpecies={isFetchingSpecies}
               isFetchingLocation={isFetchingLocation}
-              handleFetchSpecies={handleFetchSpecies}
+              handleFetchSpecies={fetchSpecies}
             />
             <SpeciesPicker
               species={species}
@@ -309,28 +113,25 @@ export default function HomeScreen() {
               speciesList={speciesList}
               isFetchingSpecies={isFetchingSpecies}
             />
-            <DateSelector date={date} setDate={setDate} />
-            <View style={styles.buttonSection}>
-              <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.customButton,
-                  (isLoading || speciesList.length === 0 || (species === 'Other' && !customSpecies) || !location?.coords) &&
-                    styles.disabledButton,
-                ]}
-                onPress={handleSubmit}
-                disabled={isLoading || speciesList.length === 0 || (species === 'Other' && !customSpecies) || !location?.coords}
-              >
-                <Text style={styles.buttonText}>{isLoading ? 'Loading...' : 'Get Fishing Tips'}</Text>
-              </TouchableOpacity>
+            <DateSelector date={date} setDate={setDate} timeOfDay={timeOfDay} setTimeOfDay={setTimeOfDay} />
+            <View style={[HomeStyles.buttonSection, GlobalStyles.buttonSectionContainer]}>
+              <View style={GlobalStyles.buttonContainer}>
+                <TouchableOpacity
+                  style={[
+                    GlobalStyles.customButton,
+                    (isLoading || speciesList.length === 0 || (species === 'Other' && !customSpecies) || !location?.coords || !timeOfDay) && GlobalStyles.disabledButton,
+                  ]}
+                  onPress={handleSubmit}
+                  disabled={isLoading || speciesList.length === 0 || (species === 'Other' && !customSpecies) || !location?.coords || !timeOfDay}
+                >
+                  <Text style={GlobalStyles.buttonText}>{isLoading ? 'Loading...' : 'Get Fishing Tips'}</Text>
+                </TouchableOpacity>
               </View>
-
-              <TouchableOpacity
-                style={[styles.customButton, styles.backButton]} // Reusing backButton style for consistency
-                onPress={handleLogout}
-              >
-                <Text style={styles.buttonText}>Log Out</Text>
-              </TouchableOpacity>
+              <View style={GlobalStyles.buttonContainer}>
+                <TouchableOpacity style={[GlobalStyles.customButton, GlobalStyles.backButton]} onPress={handleLogout}>
+                  <Text style={GlobalStyles.buttonText}>Log Out</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </ScrollView>

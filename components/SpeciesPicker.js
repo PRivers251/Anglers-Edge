@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, TextInput, ActivityIndicator } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import styles from '../styles/styles'; // Updated path
+import { View, Text, TextInput, TouchableOpacity, Modal, FlatList } from 'react-native';
+import { GlobalStyles } from '../styles/GlobalStyles';
+import { SpeciesPickerStyles } from '../styles/SpeciesPickerStyles';
+import { LocationToggleStyles } from '../styles/LocationToggleStyles';
 
 const SpeciesPicker = ({
   species,
@@ -9,37 +10,85 @@ const SpeciesPicker = ({
   customSpecies,
   setCustomSpecies,
   speciesList,
-  isFetchingSpecies
-}) => (
-  <View style={styles.speciesSection}>
-    {isFetchingSpecies ? (
-      <ActivityIndicator size="small" color="#fff" />
-    ) : speciesList.length === 0 ? (
-      <Text style={styles.placeholder}>Select location and press <Text style={styles.getSpecies}>Get Species</Text> to load options.</Text>
-    ) : (
-      <>
-        <Text style={styles.label}>Select Target Species:</Text>
-        <Picker
-          selectedValue={species}
-          onValueChange={setSpecies}
-          style={styles.picker}
-        >
-          {speciesList.map((sp) => (
-            <Picker.Item key={sp} label={sp} value={sp} color="#333" />
-          ))}
-        </Picker>
-        {species === 'Other' && (
-          <TextInput
-            style={styles.input}
-            placeholder="Enter custom species"
-            value={customSpecies}
-            onChangeText={setCustomSpecies}
-            placeholderTextColor="#888"
-          />
-        )}
-      </>
-    )}
-  </View>
-);
+  isFetchingSpecies,
+}) => {
+  const [modalVisible, setModalVisible] = React.useState(false);
+
+  const handleSelectSpecies = (selectedSpecies) => {
+    setSpecies(selectedSpecies);
+    setModalVisible(false);
+  };
+
+  console.log('SpeciesPicker Render:', { species, speciesList, isFetchingSpecies });
+
+  return (
+    <View style={SpeciesPickerStyles.speciesSection}>
+      <Text style={GlobalStyles.label}>Select Species</Text>
+      <TouchableOpacity
+        style={SpeciesPickerStyles.dropdownButton}
+        onPress={() => setModalVisible(true)}
+        disabled={isFetchingSpecies || speciesList.length === 0}
+      >
+        <Text style={SpeciesPickerStyles.dropdownText}>
+          {isFetchingSpecies
+            ? 'Loading species...'
+            : speciesList.length === 0
+            ? 'No species available'
+            : species || 'Select a species'}
+        </Text>
+      </TouchableOpacity>
+
+      {species === 'Other' && (
+        <TextInput
+          style={LocationToggleStyles.input}
+          placeholder="Enter custom species"
+          value={customSpecies}
+          onChangeText={setCustomSpecies}
+          placeholderTextColor="#999"
+        />
+      )}
+
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={GlobalStyles.modalOverlay}>
+          <View style={GlobalStyles.modalContent}>
+            <FlatList
+              data={speciesList}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    GlobalStyles.dropdownItem,
+                    item === species && GlobalStyles.selectedDateItem,
+                  ]}
+                  onPress={() => handleSelectSpecies(item)}
+                >
+                  <Text
+                    style={[
+                      GlobalStyles.dropdownItemText,
+                      item === species && GlobalStyles.selectedDateItemText,
+                    ]}
+                  >
+                    {item}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+            <TouchableOpacity
+              style={GlobalStyles.customButton}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={GlobalStyles.buttonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+};
 
 export default SpeciesPicker;

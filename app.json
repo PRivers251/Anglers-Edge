@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Angler’s Edge",
-    "slug": "anglers-edge",
-    "scheme": "anglersedge",
+    "name": "ProAnglerAI",
+    "slug": "proanglerai",
+    "scheme": "proanglerai",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,20 +14,25 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.privers251.proanglerai"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.privers251.proanglerai"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/ProAnglerAI-WhiteBackground.png"
     },
     "extra": {
       "eas": {
-        "projectId": "91acaa12-ec0a-48b4-9924-a266b6bd7ede"
+        "projectId": "4f0b6ea3-ec25-4a3f-83b6-43b73fe0cfb9"
+      },
+      "router": {
+        "origin": false
       }
     },
     "owner": "privers251",

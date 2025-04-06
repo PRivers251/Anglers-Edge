@@ -18,6 +18,7 @@ const getMoonPhaseName = (moonPhase) => {
 export const fetchWeatherData = async (lat, lon, date) => {
   const weatherUrl = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly,alerts&units=imperial&appid=${OPEN_WEATHER_MAP_API_KEY}`;
   const response = await axios.get(weatherUrl);
+  console.log('Weather API Response:', JSON.stringify(response.data, null, 2)); // Log the full response for debugging
 
   const todayLocal = new Date();
   todayLocal.setHours(0, 0, 0, 0);
@@ -33,28 +34,41 @@ export const fetchWeatherData = async (lat, lon, date) => {
   }
 
   const dailyForecasts = response.data.daily;
-  // Convert selectedLocal to UTC midnight for comparison
-  const selectedUtcMidnight = new Date(selectedLocal.getTime() - (selectedLocal.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-  
-  let dailyForecast = dailyForecasts.find(d => {
-    const forecastDate = new Date(d.dt * 1000).toISOString().split('T')[0];
-    return forecastDate === selectedUtcMidnight;
-  });
+  const dayOffset = Math.floor((selectedLocal - todayLocal) / (1000 * 60 * 60 * 24));
+  console.log('Day offset:', dayOffset, 'Selected date:', selectedLocal.toISOString().split('T')[0]);
 
+  let dailyForecast = dailyForecasts[dayOffset] || dailyForecasts[dailyForecasts.length - 1];
   if (!dailyForecast) {
-    dailyForecast = dailyForecasts[dailyForecasts.length - 1]; // Fallback to last available
+    throw new Error('No forecast available for the selected date.');
+  }
+
+  // Calculate 3-day temperature trend (if available)
+  let tempTrend = 'Stable';
+  if (dayOffset >= 2 && dailyForecasts.length >= 3) {
+    const tempToday = dailyForecast.temp.max;
+    const tempYesterday = dailyForecasts[dayOffset - 1]?.temp.max || tempToday;
+    const tempTwoDaysAgo = dailyForecasts[dayOffset - 2]?.temp.max || tempYesterday;
+    if (tempToday > tempYesterday && tempYesterday > tempTwoDaysAgo) {
+      tempTrend = 'Warming';
+    } else if (tempToday < tempYesterday && tempYesterday < tempTwoDaysAgo) {
+      tempTrend = 'Cooling';
+    }
   }
 
   const moonPhase = getMoonPhaseName(dailyForecast.moon_phase);
   const forecastMetrics = {
-    lowTempF: dailyForecast.temp.min,
-    highTempF: dailyForecast.temp.max,
-    totalPrecipIn: dailyForecast.rain || 0,
-    avgWindMph: dailyForecast.wind_speed,
-    windDeg: dailyForecast.wind_deg,
-    pressureHpa: dailyForecast.pressure,
-    moonPhase: moonPhase
+    lowTempF: dailyForecast.temp?.min ?? 0,
+    highTempF: dailyForecast.temp?.max ?? 0,
+    totalPrecipIn: dailyForecast.rain ?? 0,
+    avgWindMph: dailyForecast.wind_speed ?? 0,
+    windDeg: dailyForecast.wind_deg ?? 0,
+    pressureHpa: dailyForecast.pressure ?? 1013,
+    moonPhase: moonPhase,
+    cloudCover: dailyForecast.clouds ?? 0, // Ensure cloudCover is always a number
+    humidity: dailyForecast.humidity ?? 0, // Ensure humidity is always a number
+    tempTrend: tempTrend,
   };
 
+  console.log('Forecast Metrics:', forecastMetrics);
   return { forecastMetrics, dailyForecasts };
 };

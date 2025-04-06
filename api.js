@@ -14,40 +14,58 @@ Given a location in ${cityState} (e.g., "Mobile, AL"), provide a list of 5-10 po
 Use current knowledge of recreational fishing in the United States or Canada for accuracy. Return only common names of species (e.g., "Largemouth Bass," not "Micropterus salmoides"). Strictly return the response as JSON only, with no additional text or Markdown formatting outside the JSON structure.
 `;
 
-const getAdvicePrompt = (location, species, cityState, currentDate, forecastData, waterData, speciesTempRange) => `
-You are an expert fishing advisor providing tailored advice for anglers near ${cityState} on ${currentDate}. ${
+const getAdvicePrompt = (location, species, cityState, currentDate, forecastData, waterData, speciesTempRange, timeOfDay) => `
+You are an expert fishing advisor providing tailored advice for anglers near ${cityState} on ${currentDate} during the ${timeOfDay} time of day. ${
   location && location.coords ? `The coordinates are latitude ${location.coords.latitude}, longitude ${location.coords.longitude}, influencing local weather and water conditions.` : ''
 }
 
 **Current Conditions:**
 - **Air Temperature**: Low ${forecastData.lowTempF}°F, High ${forecastData.highTempF}°F
+- **Temperature Trend (last 3 days)**: ${forecastData.tempTrend}
 - **Precipitation**: ${forecastData.totalPrecipIn} inches
 - **Wind Speed**: ${forecastData.avgWindMph} mph, direction ${forecastData.windDeg}°
 - **Barometric Pressure**: ${forecastData.pressureHpa} hPa
+- **Cloud Cover**: ${forecastData.cloudCover}% (0% = clear, 100% = overcast)
+- **Humidity**: ${forecastData.humidity}%
 - **Moon Phase**: ${forecastData.moonPhase} (0 = new, 0.5 = full, etc.)
 - **Water Temperature**: ${waterData.waterTempF ? `${waterData.waterTempF}°F` : 'Not available'}
 - **Water Level**: ${waterData.gageHeightFt ? `${waterData.gageHeightFt} ft` : 'Not available'}
+- **Water Clarity**: ${waterData.clarity ? waterData.clarity : 'Not available'}
+- **Flow Rate**: ${waterData.flowRateCfs ? `${waterData.flowRateCfs} CFS` : 'Not available'}
 - **Optimal Water Temp for ${species || 'the species'}:**: ${speciesTempRange ? `${speciesTempRange.min}°F - ${speciesTempRange.max}°F` : 'Not available'}
 
 ${
   species && species !== 'None'
-    ? `Provide the best strategies to target ${species} under these conditions near ${cityState}. You MUST:
-      - Use all provided weather, water data, and optimal temperature range to tailor bait and strategy.
+    ? `Provide the best strategies to target ${species} under these conditions near ${cityState} during ${timeOfDay}. You MUST:
+      - Use all provided weather, water data, and optimal temperature range to tailor bait, strategy, and tackle.
+      - Consider the time of day (${timeOfDay}) to adjust strategies (e.g., fish may be in different depths or more active at certain times).
+      - Account for water clarity and flow rate when recommending bait colors and fishing locations (e.g., brighter lures in murky water, calmer eddies in high flow).
+      - Factor in cloud cover, humidity, and temperature trends to predict fish behavior (e.g., overcast skies might increase surface activity).
       - Do not specify a particular fishing spot, but base tips on conditions typical within 30 miles of ${cityState}.`
-    : `Suggest ONE fish species to target (common name only) and the best strategies to catch it under these conditions near ${cityState}. You MUST:
-      - Use all provided weather, water data, and optimal temperature range to tailor bait and strategy.
+    : `Suggest ONE fish species to target (common name only) and the best strategies to catch it under these conditions near ${cityState} during ${timeOfDay}. You MUST:
+      - Use all provided weather, water data, and optimal temperature range to tailor bait, strategy, and tackle.
+      - Consider the time of day (${timeOfDay}) to adjust strategies (e.g., fish may be in different depths or more active at certain times).
+      - Account for water clarity and flow rate when recommending bait colors and fishing locations (e.g., brighter lures in murky water, calmer eddies in high flow).
+      - Factor in cloud cover, humidity, and temperature trends to predict fish behavior (e.g., overcast skies might increase surface activity).
       - Do not specify a particular fishing spot, but base tips on conditions typical within 30 miles of ${cityState}.`
 }
 
 **Instructions:**
-- Use U.S. units (°F, inches, mph, feet, hPa).
-- Base tips on air temp, precipitation, wind, pressure, moon phase, water temp, water level, and the species' optimal water temperature range.
+- Use U.S. units (°F, inches, mph, feet, hPa, CFS).
+- Base tips on air temp, temperature trend, precipitation, wind, pressure, cloud cover, humidity, moon phase, water temp, water level, water clarity, flow rate, and the species' optimal water temperature range.
+- Provide tackle recommendations including:
+  - **Rod**: Type (e.g., light, medium, heavy), length (e.g., 6'6"), and action (e.g., fast, moderate).
+  - **Line**: Weight (e.g., 10 lb test) and material (e.g., monofilament, fluorocarbon, braided).
 - Avoid naming a specific location (e.g., "Mobile Bay"); focus on general strategies for the area.
 
 Return the response in this JSON format:
 {
   "bait": "Recommended bait or lures based on conditions",
   "strategy": "Fishing tips tailored to conditions",
+  "tackle": {
+    "rod": "Recommended rod type, length, and action (e.g., medium-heavy 7' rod, fast action)",
+    "line": "Recommended line weight and material (e.g., 10 lb fluorocarbon)"
+  },
   ${species && species !== 'None' ? '' : '"recommended_species": "Suggested fish (common name only)",'}
   "additional_notes": "Extra tips based on data (optional)"
 }
@@ -84,9 +102,9 @@ export const getSpeciesListFromAI = async (cityState) => {
   }
 };
 
-export const getFishingAdvice = async (location, species, cityState, forecastData, waterData, speciesTempRange) => {
+export const getFishingAdvice = async (location, species, cityState, forecastData, waterData, speciesTempRange, timeOfDay) => {
   const currentDate = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
-  const prompt = getAdvicePrompt(location, species, cityState, currentDate, forecastData, waterData, speciesTempRange);
+  const prompt = getAdvicePrompt(location, species, cityState, currentDate, forecastData, waterData, speciesTempRange, timeOfDay);
   try {
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
@@ -112,6 +130,10 @@ export const getFishingAdvice = async (location, species, cityState, forecastDat
     return {
       bait: species && species !== 'None' ? 'Spinners or worms' : 'Worms',
       strategy: 'Fish near cover or deep pools, adjusted for recent weather.',
+      tackle: {
+        rod: 'Medium 7\' rod, moderate action',
+        line: '10 lb monofilament',
+      },
       ...(species && species !== 'None' ? {} : { recommended_species: 'Trout' }),
       additional_notes: 'Fallback due to API error.'
     };

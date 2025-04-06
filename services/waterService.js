@@ -2,18 +2,23 @@ import axios from 'axios';
 
 const forecastWaterData = (waterTempF, gageHeightFt, daysAhead, dailyForecasts) => {
   const forecast = [];
-  const baseTemp = waterTempF || 60; // Default to 60°F if no water temp available
-  const baseHeight = gageHeightFt || 1; // Default to 1 ft if no gage height available
+  const baseTemp = waterTempF || 60;
+  const baseHeight = gageHeightFt || 1;
 
   for (let i = 0; i < daysAhead; i++) {
-    // Simple forecasting logic: Adjust water temp based on air temp trends, height based on precipitation
     const dayForecast = dailyForecasts[i] || dailyForecasts[dailyForecasts.length - 1] || {};
-    const tempAdjustment = dayForecast.temp ? (dayForecast.temp.max - 32) * 0.05 : 0.5; // Rough estimate: 5% of max air temp influences water
-    const heightAdjustment = dayForecast.rain ? dayForecast.rain * 0.1 : 0.05; // Rough estimate: Rain increases water level slightly
+    const tempAdjustment = dayForecast.temp ? (dayForecast.temp.max - 32) * 0.05 : 0.5;
+    const heightAdjustment = dayForecast.rain ? dayForecast.rain * 0.1 : 0.05;
+    // Estimate clarity: More rain = murkier water
+    const clarity = dayForecast.rain > 0.5 ? 'Murky' : dayForecast.rain > 0.1 ? 'Slightly Murky' : 'Clear';
+    // Estimate flow rate increase based on gage height and precipitation
+    const flowRateAdjustment = dayForecast.rain ? dayForecast.rain * 50 : 10;
 
     forecast.push({
       waterTempF: baseTemp + tempAdjustment * (i + 1),
       gageHeightFt: baseHeight + heightAdjustment * (i + 1),
+      clarity: clarity,
+      flowRateCfs: (baseHeight * 100 + flowRateAdjustment * (i + 1)).toFixed(1), // Rough estimate
     });
   }
 
@@ -33,12 +38,12 @@ export const fetchWaterData = async (lat, lon, date, dailyForecasts) => {
   const selectedLocal = new Date(`${date}T00:00:00`);
   selectedLocal.setHours(0, 0, 0, 0);
 
-  let waterMetrics = { waterTempF: null, gageHeightFt: null };
+  let waterMetrics = { waterTempF: null, gageHeightFt: null, clarity: 'Clear', flowRateCfs: null };
   const lastAvailableDate = todayLocal.toISOString().split('T')[0];
   const usgsParams = {
     format: 'json',
     bBox: bBox,
-    parameterCd: '00010,00065',
+    parameterCd: '00010,00065,00060', // Add 00060 for flow rate (discharge in CFS)
     startDT: lastAvailableDate,
     endDT: lastAvailableDate
   };
@@ -48,11 +53,15 @@ export const fetchWaterData = async (lat, lon, date, dailyForecasts) => {
   if (timeSeries.length > 0) {
     const tempSeries = timeSeries.find(ts => ts.variable.variableCode[0].value === '00010');
     const levelSeries = timeSeries.find(ts => ts.variable.variableCode[0].value === '00065');
+    const flowSeries = timeSeries.find(ts => ts.variable.variableCode[0].value === '00060');
     if (tempSeries?.values[0]?.value[0]?.value) {
       waterMetrics.waterTempF = (parseFloat(tempSeries.values[0].value[0].value) * 9 / 5) + 32;
     }
     if (levelSeries?.values[0]?.value[0]?.value) {
       waterMetrics.gageHeightFt = parseFloat(levelSeries.values[0].value[0].value);
+    }
+    if (flowSeries?.values[0]?.value[0]?.value) {
+      waterMetrics.flowRateCfs = parseFloat(flowSeries.values[0].value[0].value).toFixed(1);
     }
   }
 
