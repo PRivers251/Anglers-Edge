@@ -4,7 +4,9 @@ import { View, Text, TouchableOpacity, ImageBackground } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../services/supabaseClient';
 import { GlobalStyles } from '../styles/GlobalStyles';
-import AlertModal from '../components/AlertModal'; // Import the modal component
+import AlertModal from '../components/AlertModal';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { useMinimumLoading } from '../hooks/useMinimumLoading'; // Add import
 
 export default function ConfirmScreen() {
   const router = useRouter();
@@ -13,6 +15,8 @@ export default function ConfirmScreen() {
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
+
+  const showLoading = useMinimumLoading(status === 'verifying', 1000); // Use hook
 
   const showAlert = (title, message) => {
     setAlertTitle(title);
@@ -46,10 +50,17 @@ export default function ConfirmScreen() {
     verify();
   }, [params]);
 
+  if (showLoading) {
+    return (
+      <ImageBackground source={require('../assets/angler-casting-reel-into-water.png')} style={GlobalStyles.background}>
+        <LoadingSpinner />
+      </ImageBackground>
+    );
+  }
+
   return (
-    <ImageBackground source={require('assets/angler-casting-reel-into-water.png')} style={GlobalStyles.background}>
+    <ImageBackground source={require('../assets/angler-casting-reel-into-water.png')} style={GlobalStyles.background}>
       <View style={GlobalStyles.loadingContainer}>
-        {status === 'verifying' && <Text style={GlobalStyles.title}>Verifying your account...</Text>}
         {status === 'success' && (
           <>
             <Text style={GlobalStyles.title}>Welcome to ProAnglerAI!</Text>

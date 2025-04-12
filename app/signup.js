@@ -1,4 +1,4 @@
-// app/signup.js (modified)
+// app/signup.js
 import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, Text, ImageBackground, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -8,6 +8,8 @@ import { SignUpStyles } from '../styles/SignUpStyles';
 import { LocationToggleStyles } from '../styles/LocationToggleStyles';
 import { HomeStyles } from '../styles/HomeStyles';
 import AlertModal from '../components/AlertModal';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { useMinimumLoading } from '../hooks/useMinimumLoading'; // Add import
 
 export default function SignUpScreen() {
   const [firstName, setFirstName] = useState('');
@@ -18,6 +20,8 @@ export default function SignUpScreen() {
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
   const router = useRouter();
+
+  const showLoading = useMinimumLoading(loading, 1000); // Use hook
 
   const showAlert = (title, message) => {
     setAlertTitle(title);
@@ -93,41 +97,58 @@ export default function SignUpScreen() {
       return;
     }
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { first_name: firstName, username: firstName } },
-    });
-
-    setLoading(false);
-
-    if (error) {
-      showAlert('Error', error.message);
-    } else if (data.user) {
-      showAlert('Success', 'Sign-up successful! Please check your email to confirm your account, then log in.');
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { username: firstName },
+        },
+      });
+      if (error) throw error;
+      showAlert('Success', 'Check your email to confirm your account!');
       router.replace('/login');
-    } else {
-      showAlert('Error', 'Sign-up failed. Please try again.');
+    } catch (error) {
+      showAlert('Error', error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
+  if (showLoading) {
+    return (
+      <ImageBackground
+        source={require('../assets/angler-casting-reel-into-water.png')}
+        style={GlobalStyles.background}
+      >
+        <LoadingSpinner />
+      </ImageBackground>
+    );
+  }
+
   return (
-    <ImageBackground source={require('assets/angler-casting-reel-into-water.png')} style={GlobalStyles.background}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={GlobalStyles.keyboardAvoidingContainer}>
-        <ScrollView style={GlobalStyles.container} contentContainerStyle={GlobalStyles.scrollContent}>
+    <ImageBackground
+      source={require('../assets/angler-casting-reel-into-water.png')}
+      style={GlobalStyles.background}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={GlobalStyles.keyboardAvoidingContainer}
+      >
+        <ScrollView
+          style={GlobalStyles.container}
+          contentContainerStyle={GlobalStyles.scrollContent}
+        >
           <View style={GlobalStyles.content}>
             <View style={GlobalStyles.header}>
               <View style={HomeStyles.logoContainer}>
                 <Image
-                  source={require('assets/ProAnglerAI-WhiteBackground.png')}
+                  source={require('../assets/ProAnglerAI-WhiteBackground.png')}
                   style={HomeStyles.logo}
                   resizeMode="contain"
                 />
               </View>
-              <Text style={GlobalStyles.title}>ProAnglerAI</Text>
-              <Text style={GlobalStyles.title}>Sign Up</Text>
             </View>
-
             <View style={SignUpStyles.containerSignUp}>
               <View style={SignUpStyles.inputSignUpSection}>
                 <TextInput
@@ -162,9 +183,7 @@ export default function SignUpScreen() {
                   onPress={handleSignUp}
                   disabled={loading}
                 >
-                  <Text style={GlobalStyles.buttonText}>
-                    {loading ? 'Loading...' : 'Sign Up'}
-                  </Text>
+                  <Text style={GlobalStyles.buttonText}>Sign Up</Text>
                 </TouchableOpacity>
               </View>
               <View style={GlobalStyles.buttonContainer}>

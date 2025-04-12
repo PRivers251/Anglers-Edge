@@ -15,6 +15,8 @@ import { supabase } from '../services/supabaseClient';
 import { GlobalStyles } from '../styles/GlobalStyles';
 import { ResetPasswordStyles } from '../styles/ResetPasswordStyles';
 import AlertModal from '../components/AlertModal';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { useMinimumLoading } from '../hooks/useMinimumLoading'; // Add import
 
 export default function ResetPasswordScreen() {
   const [newPassword, setNewPassword] = useState('');
@@ -29,6 +31,8 @@ export default function ResetPasswordScreen() {
   const token = params.token;
   const email = params.email;
 
+  const showLoading = useMinimumLoading(loading, 1000); // Use hook
+
   const showAlert = (title, message) => {
     setAlertTitle(title);
     setAlertMessage(message);
@@ -42,7 +46,6 @@ export default function ResetPasswordScreen() {
     }
   };
 
-  // Verify the reset token when the component mounts
   useEffect(() => {
     const verifyToken = async () => {
       if (!token || !email) {
@@ -52,7 +55,6 @@ export default function ResetPasswordScreen() {
 
       setLoading(true);
       try {
-        // Verify the password reset token and establish a session
         const { error } = await supabase.auth.verifyOtp({
           token: token,
           type: 'recovery',
@@ -98,7 +100,6 @@ export default function ResetPasswordScreen() {
 
     setLoading(true);
     try {
-      // Update the user's password
       const { error } = await supabase.auth.updateUser({
         password: newPassword,
       });
@@ -113,9 +114,20 @@ export default function ResetPasswordScreen() {
     }
   };
 
+  if (showLoading) {
+    return (
+      <ImageBackground
+        source={require('../assets/angler-casting-reel-into-water.png')}
+        style={GlobalStyles.background}
+      >
+        <LoadingSpinner />
+      </ImageBackground>
+    );
+  }
+
   return (
     <ImageBackground
-      source={require('assets/angler-casting-reel-into-water.png')}
+      source={require('../assets/angler-casting-reel-into-water.png')}
       style={GlobalStyles.background}
     >
       <KeyboardAvoidingView
@@ -157,7 +169,7 @@ export default function ResetPasswordScreen() {
                   disabled={loading || !isTokenVerified}
                 >
                   <Text style={GlobalStyles.buttonText}>
-                    {loading ? 'Loading...' : 'Update Password'}
+                    Update Password
                   </Text>
                 </TouchableOpacity>
               </View>

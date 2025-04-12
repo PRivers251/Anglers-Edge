@@ -23,6 +23,8 @@ import { useFormSubmission } from '../hooks/useFormSubmission';
 import { supabase } from '../services/supabaseClient';
 import * as ExpoLinking from 'expo-linking';
 import { useRouter } from 'expo-router';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { useMinimumLoading } from '../hooks/useMinimumLoading'; // Add import
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -62,6 +64,7 @@ export default function HomeScreen() {
     timeOfDay
   );
   const [isVerifying, setIsVerifying] = useState(false);
+  const showLoading = useMinimumLoading(loading || isVerifying, 1000); // Use hook
 
   useEffect(() => {
     const handleDeepLink = async (event) => {
@@ -81,7 +84,6 @@ export default function HomeScreen() {
         }
       } else if (path === 'auth/v1/reset-password' && queryParams.token) {
         setIsVerifying(true);
-        // Navigate to reset-password screen with token
         router.push({
           pathname: '/reset-password',
           params: { token: queryParams.token },
@@ -90,12 +92,10 @@ export default function HomeScreen() {
       }
     };
 
-    // Handle initial deep link when app opens
     Linking.getInitialURL().then((url) => {
       if (url) handleDeepLink({ url });
     });
 
-    // Listen for deep links while app is running
     const subscription = Linking.addEventListener('url', handleDeepLink);
     return () => subscription.remove();
   }, [router]);
@@ -111,12 +111,8 @@ export default function HomeScreen() {
     }
   };
 
-  if (loading || isVerifying) {
-    return (
-      <View style={GlobalStyles.loadingContainer}>
-        <Text style={GlobalStyles.title}>{isVerifying ? 'Verifying...' : 'Loading...'}</Text>
-      </View>
-    );
+  if (showLoading) {
+    return <LoadingSpinner />;
   }
 
   console.log('HomeScreen Render Props:', {
@@ -133,7 +129,7 @@ export default function HomeScreen() {
 
   return (
     <ImageBackground
-      source={require('assets/angler-casting-reel-into-water.png')}
+      source={require('../assets/angler-casting-reel-into-water.png')}
       style={GlobalStyles.background}
     >
       <KeyboardAvoidingView
@@ -145,12 +141,11 @@ export default function HomeScreen() {
             <View style={GlobalStyles.header}>
               <View style={HomeStyles.logoContainer}>
                 <Image
-                  source={require('assets/ProAnglerAI-WhiteBackground.png')}
+                  source={require('../assets/ProAnglerAI-WhiteBackground.png')}
                   style={HomeStyles.logo}
                   resizeMode="contain"
                 />
               </View>
-              <Text style={GlobalStyles.title}>ProAnglerAI</Text>
               <Text style={GlobalStyles.title}>Welcome {username || 'User'}</Text>
             </View>
             <LocationToggle

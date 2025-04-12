@@ -19,6 +19,8 @@ import { LoginStyles } from '../styles/LoginStyles';
 import { LocationToggleStyles } from '../styles/LocationToggleStyles';
 import { HomeStyles } from '../styles/HomeStyles';
 import AlertModal from '../components/AlertModal';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { useMinimumLoading } from '../hooks/useMinimumLoading'; // Add import
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -29,7 +31,9 @@ export default function LoginScreen() {
   const [alertMessage, setAlertMessage] = useState('');
   const router = useRouter();
 
-  const showAlert = (title: string, message: string) => {
+  const showLoading = useMinimumLoading(loading, 1000); // Use hook
+
+  const showAlert = (title, message) => {
     setAlertTitle(title);
     setAlertMessage(message);
     setAlertVisible(true);
@@ -65,7 +69,6 @@ export default function LoginScreen() {
     }
 
     setLoading(true);
-    // Include the email in the redirectTo URL
     const redirectTo = `https://proanglerai.com/redirect?email=${encodeURIComponent(email)}`;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo,
@@ -86,9 +89,20 @@ export default function LoginScreen() {
     }
   };
 
+  if (showLoading) {
+    return (
+      <ImageBackground
+        source={require('../assets/angler-casting-reel-into-water.png')}
+        style={GlobalStyles.background}
+      >
+        <LoadingSpinner />
+      </ImageBackground>
+    );
+  }
+
   return (
     <ImageBackground
-      source={require('assets/angler-casting-reel-into-water.png')}
+      source={require('../assets/angler-casting-reel-into-water.png')}
       style={GlobalStyles.background}
     >
       <KeyboardAvoidingView
@@ -103,7 +117,7 @@ export default function LoginScreen() {
             <View style={GlobalStyles.header}>
               <View style={HomeStyles.logoContainer}>
                 <Image
-                  source={require('assets/ProAnglerAI-WhiteBackground.png')}
+                  source={require('../assets/ProAnglerAI-WhiteBackground.png')}
                   style={HomeStyles.logo}
                   resizeMode="contain"
                 />
@@ -137,7 +151,7 @@ export default function LoginScreen() {
                   disabled={loading}
                 >
                   <Text style={GlobalStyles.buttonText}>
-                    {loading ? 'Loading...' : 'Login'}
+                    Login
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -148,7 +162,7 @@ export default function LoginScreen() {
                   disabled={loading}
                 >
                   <Text style={GlobalStyles.buttonText}>
-                    {loading ? 'Loading...' : 'Sign Up'}
+                    Sign Up
                   </Text>
                 </TouchableOpacity>
               </View>

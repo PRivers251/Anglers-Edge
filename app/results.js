@@ -6,7 +6,6 @@ import {
   View,
   Text,
   ImageBackground,
-  ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
 import { formatDate } from '../utils/dateUtils';
@@ -14,7 +13,9 @@ import { GlobalStyles } from '../styles/GlobalStyles';
 import { ResultsStyles } from '../styles/ResultsStyles';
 import { useFishingData } from '../hooks/useFishingData';
 import { supabase } from '../services/supabaseClient';
-import AlertModal from '../components/AlertModal'; // Import the modal component
+import AlertModal from '../components/AlertModal';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { useMinimumLoading } from '../hooks/useMinimumLoading'; // Add import
 
 export default function ResultsScreen() {
   const router = useRouter();
@@ -37,6 +38,8 @@ export default function ResultsScreen() {
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
+
+  const showLoading = useMinimumLoading(loading, 1000); // Use hook
 
   const showAlert = (title, message) => {
     setAlertTitle(title);
@@ -71,12 +74,10 @@ export default function ResultsScreen() {
     }
   };
 
-  if (loading) {
+  if (showLoading) {
     return (
-      <ImageBackground source={require('assets/angler-casting-reel-into-water.png')} style={GlobalStyles.background}>
-        <View style={GlobalStyles.loadingContainer}>
-          <ActivityIndicator size="large" color="#fff" />
-        </View>
+      <ImageBackground source={require('../assets/angler-casting-reel-into-water.png')} style={GlobalStyles.background}>
+        <LoadingSpinner />
       </ImageBackground>
     );
   }
@@ -84,7 +85,7 @@ export default function ResultsScreen() {
   const parsedDate = new Date(`${date}T00:00:00`);
 
   return (
-    <ImageBackground source={require('assets/angler-casting-reel-into-water.png')} style={GlobalStyles.background}>
+    <ImageBackground source={require('../assets/angler-casting-reel-into-water.png')} style={GlobalStyles.background}>
       <ScrollView style={GlobalStyles.container}>
         <View style={GlobalStyles.header}>
           <Text style={GlobalStyles.title}>Fishing Advice for {cityState} - {species || 'Unknown Species'}</Text>
