@@ -5,11 +5,11 @@
     "scheme": "proanglerai",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/ProAnglerAI-WhiteBackground.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/ProAnglerAI-WhiteBackground.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -19,10 +19,22 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/ProAnglerAI-WhiteBackground.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.privers251.proanglerai"
+      "package": "com.privers251.proanglerai",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "proanglerai",
+              "host": "*"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/ProAnglerAI-WhiteBackground.png"

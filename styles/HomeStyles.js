@@ -5,12 +5,12 @@ export const HomeStyles = StyleSheet.create({
   logoContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   logo: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
     borderWidth: 2,
     borderColor: '#00CED1',
     backgroundColor: 'transparent',

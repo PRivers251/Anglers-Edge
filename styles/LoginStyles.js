@@ -10,6 +10,13 @@ export const LoginStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   inputLoginSection: {
-    marginVertical: 50, // Replace marginBlock with marginVertical
+    marginVertical: 25, // Replace marginBlock with marginVertical
+  },
+  forgotPasswordText: {
+    fontSize: 16,
+    color: '#00CED1',
+    textAlign: 'center',
+    textDecorationLine: 'underline',
+    marginTop: 10,
   },
 });

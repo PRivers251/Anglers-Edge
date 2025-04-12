@@ -1,5 +1,16 @@
+// app/index.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, ImageBackground, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Image, Linking } from 'react-native';
+import {
+  View,
+  Text,
+  ImageBackground,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  Linking,
+} from 'react-native';
 import LocationToggle from '../components/LocationToggle';
 import SpeciesPicker from '../components/SpeciesPicker';
 import DateSelector from '../components/DateSelector';
@@ -11,14 +22,45 @@ import { useSpecies } from '../hooks/useSpecies';
 import { useFormSubmission } from '../hooks/useFormSubmission';
 import { supabase } from '../services/supabaseClient';
 import * as ExpoLinking from 'expo-linking';
+import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
+  const router = useRouter();
   const { username, loading, handleLogout } = useAuth();
-  const { useCurrentLocation, setUseCurrentLocation, location, setLocation, cityState, manualCity, manualState, setManualCity, setManualState, isFetchingLocation, resolveManualLocation } = useLocation();
-  const { species, setSpecies, customSpecies, setCustomSpecies, speciesList, weatherData, isFetchingSpecies, handleFetchSpecies } = useSpecies();
+  const {
+    useCurrentLocation,
+    setUseCurrentLocation,
+    location,
+    setLocation,
+    cityState,
+    manualCity,
+    manualState,
+    setManualCity,
+    setManualState,
+    isFetchingLocation,
+    resolveManualLocation,
+  } = useLocation();
+  const {
+    species,
+    setSpecies,
+    customSpecies,
+    setCustomSpecies,
+    speciesList,
+    weatherData,
+    isFetchingSpecies,
+    handleFetchSpecies,
+  } = useSpecies();
   const [date, setDate] = useState(new Date());
   const [timeOfDay, setTimeOfDay] = useState('Morning');
-  const { isLoading, handleSubmit } = useFormSubmission(location, species, customSpecies, cityState, weatherData, date, timeOfDay);
+  const { isLoading, handleSubmit } = useFormSubmission(
+    location,
+    species,
+    customSpecies,
+    cityState,
+    weatherData,
+    date,
+    timeOfDay
+  );
   const [isVerifying, setIsVerifying] = useState(false);
 
   useEffect(() => {
@@ -37,6 +79,14 @@ export default function HomeScreen() {
         } else {
           alert('Account confirmed! Please log in to start fishing smarter with ProAnglerAI.');
         }
+      } else if (path === 'auth/v1/reset-password' && queryParams.token) {
+        setIsVerifying(true);
+        // Navigate to reset-password screen with token
+        router.push({
+          pathname: '/reset-password',
+          params: { token: queryParams.token },
+        });
+        setIsVerifying(false);
       }
     };
 
@@ -48,7 +98,7 @@ export default function HomeScreen() {
     // Listen for deep links while app is running
     const subscription = Linking.addEventListener('url', handleDeepLink);
     return () => subscription.remove();
-  }, []);
+  }, [router]);
 
   const fetchSpecies = async () => {
     let loc = location;
@@ -64,7 +114,7 @@ export default function HomeScreen() {
   if (loading || isVerifying) {
     return (
       <View style={GlobalStyles.loadingContainer}>
-        <Text style={GlobalStyles.title}>{isVerifying ? 'Verifying your account...' : 'Loading...'}</Text>
+        <Text style={GlobalStyles.title}>{isVerifying ? 'Verifying...' : 'Loading...'}</Text>
       </View>
     );
   }
@@ -82,13 +132,23 @@ export default function HomeScreen() {
   });
 
   return (
-    <ImageBackground source={require('assets/angler-casting-reel-into-water.png')} style={GlobalStyles.background}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={GlobalStyles.keyboardAvoidingContainer}>
+    <ImageBackground
+      source={require('assets/angler-casting-reel-into-water.png')}
+      style={GlobalStyles.background}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={GlobalStyles.keyboardAvoidingContainer}
+      >
         <ScrollView style={GlobalStyles.container} contentContainerStyle={GlobalStyles.scrollContent}>
           <View style={GlobalStyles.content}>
             <View style={GlobalStyles.header}>
               <View style={HomeStyles.logoContainer}>
-                <Image source={require('assets/ProAnglerAI-WhiteBackground.png')} style={HomeStyles.logo} resizeMode="contain" />
+                <Image
+                  source={require('assets/ProAnglerAI-WhiteBackground.png')}
+                  style={HomeStyles.logo}
+                  resizeMode="contain"
+                />
               </View>
               <Text style={GlobalStyles.title}>ProAnglerAI</Text>
               <Text style={GlobalStyles.title}>Welcome {username || 'User'}</Text>
@@ -119,16 +179,32 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   style={[
                     GlobalStyles.customButton,
-                    (isLoading || speciesList.length === 0 || (species === 'Other' && !customSpecies) || !location?.coords || !timeOfDay) && GlobalStyles.disabledButton,
+                    (isLoading ||
+                      speciesList.length === 0 ||
+                      (species === 'Other' && !customSpecies) ||
+                      !location?.coords ||
+                      !timeOfDay) &&
+                      GlobalStyles.disabledButton,
                   ]}
                   onPress={handleSubmit}
-                  disabled={isLoading || speciesList.length === 0 || (species === 'Other' && !customSpecies) || !location?.coords || !timeOfDay}
+                  disabled={
+                    isLoading ||
+                    speciesList.length === 0 ||
+                    (species === 'Other' && !customSpecies) ||
+                    !location?.coords ||
+                    !timeOfDay
+                  }
                 >
-                  <Text style={GlobalStyles.buttonText}>{isLoading ? 'Loading...' : 'Get Fishing Tips'}</Text>
+                  <Text style={GlobalStyles.buttonText}>
+                    {isLoading ? 'Loading...' : 'Get Fishing Tips'}
+                  </Text>
                 </TouchableOpacity>
               </View>
               <View style={GlobalStyles.buttonContainer}>
-                <TouchableOpacity style={[GlobalStyles.customButton, GlobalStyles.backButton]} onPress={handleLogout}>
+                <TouchableOpacity
+                  style={[GlobalStyles.customButton, GlobalStyles.backButton]}
+                  onPress={handleLogout}
+                >
                   <Text style={GlobalStyles.buttonText}>Log Out</Text>
                 </TouchableOpacity>
               </View>
