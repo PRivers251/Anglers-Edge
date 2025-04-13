@@ -16,17 +16,18 @@ module.exports = function (api) {
         'module-resolver',
         {
           root: ['./app/index.js'],
-          extensions: ['.js', '.jsx', '.ts', '.tsx', '.png'], // Add .png to handle image assets
+          extensions: ['.js', '.jsx', '.ts', '.tsx', '.png'],
           alias: {
             components: './components',
             services: './services',
             styles: './styles',
             utils: './utils',
             assets: './assets',
-            api: './api'
+            api: './api',
           },
         },
       ],
+      'react-native-reanimated/plugin',
     ],
   };
 };

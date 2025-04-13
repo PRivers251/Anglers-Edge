@@ -24,7 +24,7 @@ import { supabase } from '../services/supabaseClient';
 import * as ExpoLinking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { useMinimumLoading } from '../hooks/useMinimumLoading'; // Add import
+import { useMinimumLoading } from '../hooks/useMinimumLoading';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -64,7 +64,7 @@ export default function HomeScreen() {
     timeOfDay
   );
   const [isVerifying, setIsVerifying] = useState(false);
-  const showLoading = useMinimumLoading(loading || isVerifying, 1000); // Use hook
+  const showLoading = useMinimumLoading(loading || isVerifying, 1000);
 
   useEffect(() => {
     const handleDeepLink = async (event) => {

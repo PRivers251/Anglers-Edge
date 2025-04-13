@@ -1,21 +1,17 @@
 // app/results.js
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-  ScrollView,
-  View,
-  Text,
-  ImageBackground,
-  TouchableOpacity,
-} from 'react-native';
+import { ScrollView, View, ImageBackground, TouchableOpacity, Text } from 'react-native';
 import { formatDate } from '../utils/dateUtils';
 import { GlobalStyles } from '../styles/GlobalStyles';
 import { ResultsStyles } from '../styles/ResultsStyles';
 import { useFishingData } from '../hooks/useFishingData';
-import { supabase } from '../services/supabaseClient';
+import { useFeedback } from '../hooks/useFeedback';
 import AlertModal from '../components/AlertModal';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { useMinimumLoading } from '../hooks/useMinimumLoading'; // Add import
+import { useMinimumLoading } from '../hooks/useMinimumLoading';
+import AdviceCard from '../components/AdviceCard';
+import ForecastCard from '../components/ForecastCard';
 
 export default function ResultsScreen() {
   const router = useRouter();
@@ -25,7 +21,7 @@ export default function ResultsScreen() {
   const weatherData = useMemo(() => (params.weatherData ? JSON.parse(params.weatherData) : null), [params.weatherData]);
   const { species, cityState, date, timeOfDay } = params;
 
-  const { advice, forecastData, waterData, tempRange, loading, error } = useFishingData(
+  const { advice, forecastData, loading, error } = useFishingData(
     location,
     species,
     cityState,
@@ -34,45 +30,16 @@ export default function ResultsScreen() {
     timeOfDay
   );
 
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
-  const [alertVisible, setAlertVisible] = useState(false);
-  const [alertTitle, setAlertTitle] = useState('');
-  const [alertMessage, setAlertMessage] = useState('');
+  const {
+    feedbackSubmitted,
+    alertVisible,
+    alertTitle,
+    alertMessage,
+    handleFeedback,
+    closeAlert,
+  } = useFeedback(species, cityState, date, timeOfDay, advice);
 
-  const showLoading = useMinimumLoading(loading, 1000); // Use hook
-
-  const showAlert = (title, message) => {
-    setAlertTitle(title);
-    setAlertMessage(message);
-    setAlertVisible(true);
-  };
-
-  const closeAlert = () => {
-    setAlertVisible(false);
-  };
-
-  const handleFeedback = async (wasHelpful) => {
-    try {
-      const { error } = await supabase.from('feedback').insert([
-        {
-          user_id: (await supabase.auth.getUser()).data.user.id,
-          species: species,
-          city_state: cityState,
-          date: date,
-          time_of_day: timeOfDay,
-          advice: advice,
-          was_helpful: wasHelpful,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-      if (error) throw error;
-      setFeedbackSubmitted(true);
-      showAlert('Thank You', 'Your feedback has been submitted!');
-    } catch (error) {
-      console.error('Feedback Error:', error.message);
-      showAlert('Error', 'Failed to submit feedback. Please try again.');
-    }
-  };
+  const showLoading = useMinimumLoading(loading, 1000);
 
   if (showLoading) {
     return (
@@ -82,113 +49,40 @@ export default function ResultsScreen() {
     );
   }
 
-  const parsedDate = new Date(`${date}T00:00:00`);
-
   return (
     <ImageBackground source={require('../assets/angler-casting-reel-into-water.png')} style={GlobalStyles.background}>
       <ScrollView style={GlobalStyles.container}>
         <View style={GlobalStyles.header}>
-          <Text style={GlobalStyles.title}>Fishing Advice for {cityState} - {species || 'Unknown Species'}</Text>
+          <Text style={GlobalStyles.title}>{formatDate(date)}</Text>
+          <Text style={ResultsStyles.subtitle}>
+            {species || 'Unknown Species'} Fishing in {cityState || 'Unknown Location'}
+          </Text>
         </View>
         <View style={ResultsStyles.forecastSection}>
-          {forecastData?.forecastMetrics ? (
-            <View style={ResultsStyles.forecastCard}>
-              <Text style={ResultsStyles.forecastField}>
-                <Text style={GlobalStyles.label}>Date: </Text>{formatDate(date)} ({timeOfDay})
-              </Text>
-              <Text style={ResultsStyles.forecastField}>
-                <Text style={GlobalStyles.label}>Temperature: </Text>
-                {forecastData.forecastMetrics.lowTempF !== undefined && forecastData.forecastMetrics.highTempF !== undefined
-                  ? `${Math.round(forecastData.forecastMetrics.lowTempF)}–${Math.round(forecastData.forecastMetrics.highTempF)}°F`
-                  : 'N/A'}
-              </Text>
-              <Text style={ResultsStyles.forecastField}>
-                <Text style={GlobalStyles.label}>Temp Trend: </Text>
-                {forecastData.forecastMetrics.tempTrend || 'N/A'}
-              </Text>
-              <Text style={ResultsStyles.forecastField}>
-                <Text style={GlobalStyles.label}>Precipitation: </Text>
-                {forecastData.forecastMetrics.totalPrecipIn !== undefined
-                  ? `${Math.round(forecastData.forecastMetrics.totalPrecipIn)} in`
-                  : 'N/A'}
-              </Text>
-              <Text style={ResultsStyles.forecastField}>
-                <Text style={GlobalStyles.label}>Wind Speed: </Text>
-                {forecastData.forecastMetrics.avgWindMph !== undefined
-                  ? `${Math.round(forecastData.forecastMetrics.avgWindMph)} mph`
-                  : 'N/A'}
-              </Text>
-              <Text style={ResultsStyles.forecastField}>
-                <Text style={GlobalStyles.label}>Cloud Cover: </Text>
-                {forecastData.forecastMetrics.cloudCover !== undefined
-                  ? `${forecastData.forecastMetrics.cloudCover}% `
-                  : 'N/A '}
-                ({forecastData.forecastMetrics.cloudCover !== undefined
-                  ? forecastData.forecastMetrics.cloudCover >= 70
-                    ? 'Overcast'
-                    : forecastData.forecastMetrics.cloudCover >= 30
-                    ? 'Partly Cloudy'
-                    : 'Clear'
-                  : 'N/A'})
-              </Text>
-              <Text style={ResultsStyles.forecastField}>
-                <Text style={GlobalStyles.label}>Humidity: </Text>
-                {forecastData.forecastMetrics.humidity !== undefined
-                  ? `${forecastData.forecastMetrics.humidity}%`
-                  : 'N/A'}
-              </Text>
-              {waterData?.waterTempF && (
-                <Text style={ResultsStyles.forecastField}>
-                  <Text style={GlobalStyles.label}>Water Temp: </Text>
-                  {waterData.waterTempF.toFixed(1)}°F {parsedDate > new Date() ? '(forecasted)' : ''}
-                </Text>
-              )}
-              {waterData?.gageHeightFt && (
-                <Text style={ResultsStyles.forecastField}>
-                  <Text style={GlobalStyles.label}>Water Level: </Text>
-                  {waterData.gageHeightFt.toFixed(1)} ft {parsedDate > new Date() ? '(forecasted)' : ''}
-                </Text>
-              )}
-              {waterData?.clarity && (
-                <Text style={ResultsStyles.forecastField}>
-                  <Text style={GlobalStyles.label}>Water Clarity: </Text>{waterData.clarity}
-                </Text>
-              )}
-              {waterData?.flowRateCfs && (
-                <Text style={ResultsStyles.forecastField}>
-                  <Text style={GlobalStyles.label}>Flow Rate: </Text>{waterData.flowRateCfs} CFS
-                </Text>
-              )}
-              <Text style={ResultsStyles.forecastField}>
-                <Text style={GlobalStyles.label}>Fishing Conditions: </Text>
-                {'★'.repeat(forecastData.forecastMetrics.rating)}{'☆'.repeat(5 - forecastData.forecastMetrics.rating)}
-              </Text>
-            </View>
-          ) : error ? (
-            <Text style={ResultsStyles.errorText}>Error: {error}</Text>
-          ) : (
-            <Text style={ResultsStyles.errorText}>Unable to load forecast data.</Text>
-          )}
+          <ForecastCard forecastMetrics={forecastData?.forecastMetrics} error={error} />
         </View>
         <View style={GlobalStyles.content}>
           <View style={ResultsStyles.adviceSection}>
-            <View style={ResultsStyles.adviceCard}>
-              {advice && (
-                <>
-                  <Text style={ResultsStyles.field}><Text style={GlobalStyles.label}>Bait: </Text>{advice.bait || 'Not specified'}</Text>
-                  <Text style={ResultsStyles.field}><Text style={GlobalStyles.label}>Strategy: </Text>{advice.strategy || 'Not specified'}</Text>
-                  {advice.tackle && (
-                    <Text style={ResultsStyles.field}>
-                      <Text style={GlobalStyles.label}>Tackle: </Text>
-                      Rod: {advice.tackle.rod || 'Not specified'}, Line: {advice.tackle.line || 'Not specified'}
-                    </Text>
-                  )}
-                  {advice.additional_notes && (
-                    <Text style={ResultsStyles.field}><Text style={GlobalStyles.label}>Additional Notes: </Text>{advice.additional_notes}</Text>
-                  )}
-                </>
-              )}
-            </View>
+            {advice && (
+              <>
+                <AdviceCard
+                  title="Tackle Recommendations"
+                  content={[
+                    `Rod: ${advice.tackle?.rod || 'Not specified'}`,
+                    `Line: ${advice.tackle?.line || 'Not specified'}`,
+                  ]}
+                />
+                <AdviceCard title="Bait" content={advice.bait || 'Not specified'} />
+                <AdviceCard
+                  title="Strategy"
+                  content={
+                    advice.strategy || advice.additional_notes
+                      ? `${advice.strategy || ''} ${advice.additional_notes || ''}`.trim()
+                      : 'Not specified'
+                  }
+                />
+              </>
+            )}
             {!feedbackSubmitted && (
               <View style={ResultsStyles.feedbackSection}>
                 <Text style={ResultsStyles.feedbackLabel}>Was this advice helpful?</Text>
@@ -214,12 +108,7 @@ export default function ResultsScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-      <AlertModal
-        visible={alertVisible}
-        title={alertTitle}
-        message={alertMessage}
-        onClose={closeAlert}
-      />
+      <AlertModal visible={alertVisible} title={alertTitle} message={alertMessage} onClose={closeAlert} />
     </ImageBackground>
   );
 }
