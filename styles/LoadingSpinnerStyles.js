@@ -6,33 +6,22 @@ export const LoadingSpinnerStyles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Matches GlobalStyles.loadingContainer
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   logoContainer: {
-    position: 'relative',
-    width: 150, // Adjustable size
-    height: 150,
+    width: 240, // Container slightly larger than video
+    height: 240,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  logoWrapper: {
+    width: 200, // Same as video size
+    height: 200,
+    borderRadius: 100, // Half of 200 for perfect circle
+    overflow: 'hidden', // Ensure clipping
   },
   logo: {
-    width: 120,
-    height: 120,
-    borderRadius: 60, // Circular logo
-  },
-  border: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  innerBorder: {
-    width: '100%',
-    height: '100%',
-    borderWidth: 4,
-    borderColor: '#00CED1', // Brand blue
-    borderRadius: 75, // Circular border
-    borderStyle: 'solid',
+    width: 200, // Large video size
+    height: 200,
   },
 });
