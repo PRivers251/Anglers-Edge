@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { Alert } from 'react-native';
 
-export const useFormSubmission = (location, species, customSpecies, cityState, weatherData, date, timeOfDay) => {
+export const useFormSubmission = (location, species, customSpecies, cityState, date, timeOfDay) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -20,21 +21,6 @@ export const useFormSubmission = (location, species, customSpecies, cityState, w
       },
     };
 
-    const simplifiedWeatherData = weatherData
-      ? {
-          lowTempF: Math.round((parseFloat(weatherData.avgTemp) * 9) / 5 + 32 - 5),
-          highTempF: Math.round((parseFloat(weatherData.avgTemp) * 9) / 5 + 32 + 5),
-          totalPrecipIn: Math.round(parseFloat(weatherData.totalPrecip) / 25.4),
-          avgWindMph: Math.round(parseFloat(weatherData.avgWind) * 0.621371),
-          windDeg: 0,
-          pressureHpa: 1013,
-          moonPhase: "Unknown",
-          cloudCover: 0,
-          humidity: 50,
-          tempTrend: "Stable",
-        }
-      : null;
-
     try {
       router.push({
         pathname: '/results',
@@ -42,13 +28,12 @@ export const useFormSubmission = (location, species, customSpecies, cityState, w
           location: JSON.stringify(simplifiedLocation),
           species: finalSpecies,
           cityState,
-          weatherData: simplifiedWeatherData ? JSON.stringify(simplifiedWeatherData) : null,
           date: formattedDate,
           timeOfDay: timeOfDay,
         },
       });
     } catch (error) {
-      console.error('Navigation Error:', error.message);
+      Alert.alert('Error', 'Failed to navigate to results. Please try again.');
     } finally {
       setIsLoading(false);
     }

@@ -19,7 +19,6 @@ const SpeciesPicker = ({
     setModalVisible(false);
   };
 
-  console.log('SpeciesPicker Render:', { species, speciesList, isFetchingSpecies });
 
   return (
     <View style={SpeciesPickerStyles.speciesSection}>

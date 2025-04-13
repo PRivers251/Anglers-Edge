@@ -94,4 +94,44 @@ export const ResultsStyles = StyleSheet.create({
   feedbackButton: {
     width: '40%',
   },
+  // Styles for the temperature section with weather icon
+  temperatureSection: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  temperatureContainer: {
+    flexDirection: 'column', // Stack the temp/icon row and subtitle vertically
+    alignItems: 'center', // Center the content horizontally
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  tempIconRow: {
+    flexDirection: 'row', // Temperature and icon side by side
+    alignItems: 'center', // Vertically center the temperature and icon
+  },
+  tempSubtitleContainer: {
+    marginTop: 4, // Space between the temp/icon row and the subtitle
+  },
+  temperatureText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  tempRangeSubtitle: {
+    fontSize: 14,
+    color: '#666',
+  },
+  weatherIcon: {
+    width: 40,
+    height: 40,
+    marginLeft: 10, // Space between the temperature text and the icon
+  },
 });

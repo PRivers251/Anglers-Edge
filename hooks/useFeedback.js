@@ -1,4 +1,3 @@
-// hooks/useFeedback.js
 import { useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 
@@ -8,37 +7,37 @@ export const useFeedback = (species, cityState, date, timeOfDay, advice) => {
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
 
-  const showAlert = (title, message) => {
-    setAlertTitle(title);
-    setAlertMessage(message);
-    setAlertVisible(true);
+  const handleFeedback = async (isHelpful) => {
+    try {
+      const { error } = await supabase.from('feedback').insert([
+        {
+          species,
+          location: cityState,
+          date,
+          time_of_day: timeOfDay,
+          advice: JSON.stringify(advice),
+          is_helpful: isHelpful,
+        },
+      ]);
+
+      if (error) {
+        setAlertTitle('Error');
+        setAlertMessage('Failed to submit feedback. Please try again.');
+      } else {
+        setAlertTitle('Success');
+        setAlertMessage('Thank you for your feedback!');
+        setFeedbackSubmitted(true);
+      }
+    } catch (err) {
+      setAlertTitle('Error');
+      setAlertMessage('An unexpected error occurred. Please try again.');
+    } finally {
+      setAlertVisible(true);
+    }
   };
 
   const closeAlert = () => {
     setAlertVisible(false);
-  };
-
-  const handleFeedback = async (wasHelpful) => {
-    try {
-      const { error } = await supabase.from('feedback').insert([
-        {
-          user_id: (await supabase.auth.getUser()).data.user.id,
-          species,
-          city_state: cityState,
-          date,
-          time_of_day: timeOfDay,
-          advice,
-          was_helpful: wasHelpful,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-      if (error) throw error;
-      setFeedbackSubmitted(true);
-      showAlert('Thank You', 'Your feedback has been submitted!');
-    } catch (error) {
-      console.error('Feedback Error:', error.message);
-      showAlert('Error', 'Failed to submit feedback. Please try again.');
-    }
   };
 
   return {
@@ -47,7 +46,6 @@ export const useFeedback = (species, cityState, date, timeOfDay, advice) => {
     alertTitle,
     alertMessage,
     handleFeedback,
-    showAlert,
     closeAlert,
   };
 };

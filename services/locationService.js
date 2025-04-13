@@ -1,6 +1,9 @@
 import * as Location from 'expo-location';
 import axios from 'axios';
 import { GOOGLE_MAPS_API_KEY } from '@env';
+import { logger } from '../utils/logger';
+
+const isDebug = process.env.NODE_ENV === 'development';
 
 export const fetchLocationAndWeather = async (useCurrentLocation, targetCityState, currentLocation) => {
   let loc = useCurrentLocation ? currentLocation : null;
@@ -21,7 +24,9 @@ export const fetchLocationAndWeather = async (useCurrentLocation, targetCityStat
         throw new Error('No geocoding results found');
       }
     } catch (error) {
-      console.error('Geocoding Error:', error.message);
+      if (isDebug) {
+        logger.error('Geocoding Error:', error.message);
+      }
       return { loc: null, weather: null };
     }
   }
@@ -40,7 +45,9 @@ export const fetchLocationAndWeather = async (useCurrentLocation, targetCityStat
         avgWind: (weatherData.wind_speed_10m.reduce((a, b) => a + b, 0) / weatherData.wind_speed_10m.length).toFixed(1)
       };
     } catch (error) {
-      console.error('Weather Fetch Error:', error.message);
+      if (isDebug) {
+        logger.error('Weather Fetch Error:', error.message);
+      }
       weather = null;
     }
   }
@@ -51,15 +58,21 @@ export const fetchLocationAndWeather = async (useCurrentLocation, targetCityStat
 export const getCurrentLocation = async () => {
   let { status } = await Location.requestForegroundPermissionsAsync();
   if (status !== 'granted') {
-    console.error('Location permission denied');
+    if (isDebug) {
+      logger.error('Location permission denied');
+    }
     return null;
   }
   try {
     const loc = await Location.getCurrentPositionAsync({});
-    console.log('Current location fetched:', loc.coords);
+    if (isDebug) {
+      logger.log('Current location fetched:', loc.coords);
+    }
     return loc;
   } catch (error) {
-    console.error('Location fetch error:', error.message);
+    if (isDebug) {
+      logger.error('Location fetch error:', error.message);
+    }
     return null;
   }
 };

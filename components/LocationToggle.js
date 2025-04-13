@@ -19,8 +19,6 @@ const LocationToggle = ({
     ? isFetchingSpecies || isFetchingLocation || cityState === 'Location unavailable' || cityState === 'Location permission denied'
     : isFetchingSpecies || !manualCity || !manualState;
 
-  console.log('LocationToggle Render:', { cityState, isFetchingLocation });
-
   return (
     <View style={[LocationToggleStyles.locationSection]}>
       <Text style={GlobalStyles.label}>Where are you going fishing?</Text>

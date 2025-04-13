@@ -1,5 +1,8 @@
 import axios from 'axios';
 import { OPENAI_API_KEY } from '@env';
+import { logger } from './utils/logger';
+
+const isDebug = process.env.NODE_ENV === 'development';
 
 const getSpeciesPrompt = (cityState) => `
 Given a location in ${cityState} (e.g., "Mobile, AL"), provide a list of 5-10 popular fish species that anglers commonly target in this region. Return the list in the following JSON format:
@@ -66,7 +69,7 @@ Return the response in this JSON format:
     "rod": "Recommended rod type, length, and action (e.g., medium-heavy 7' rod, fast action)",
     "line": "Recommended line weight and material (e.g., 10 lb fluorocarbon)"
   },
-  ${species && species !== 'None' ? '' : '"recommended_species": "Suggested fish (common name only)",'}
+  ${species && species !== 'None' ? '' : '"recommended_species": "Suggested fish (common name only),"'}
   "additional_notes": "Extra tips based on data (optional)"
 }
 Strictly return JSON only, with no additional text or Markdown outside the JSON structure.
@@ -94,7 +97,9 @@ export const getSpeciesListFromAI = async (cityState) => {
     }
     return [...parsed.species, 'None'];
   } catch (error) {
-    console.error('Species API Error:', error.message);
+    if (isDebug) {
+      logger.error('Species API Error:', error.message);
+    }
     const fallback = cityState.includes('AL')
       ? ['Largemouth Bass', 'Catfish', 'Crappie', 'Redfish', 'Bluegill']
       : ['Largemouth Bass', 'Catfish', 'Rainbow Trout', 'Bluegill', 'Carp'];
@@ -126,7 +131,9 @@ export const getFishingAdvice = async (location, species, cityState, forecastDat
     }
     return parsed;
   } catch (error) {
-    console.error('Advice API Error:', error.message);
+    if (isDebug) {
+      logger.error('Advice API Error:', error.message);
+    }
     return {
       bait: species && species !== 'None' ? 'Spinners or worms' : 'Worms',
       strategy: 'Fish near cover or deep pools, adjusted for recent weather.',
@@ -174,7 +181,9 @@ Use current knowledge of recreational fishing. If the species is not valid or da
     }
     return parsed.optimal_temp_range_f;
   } catch (error) {
-    console.error('Temp Range API Error:', error.message);
+    if (isDebug) {
+      logger.error('Temp Range API Error:', error.message);
+    }
     return { min: 60, max: 80 };
   }
 };

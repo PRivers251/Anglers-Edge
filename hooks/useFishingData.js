@@ -1,4 +1,3 @@
-// hooks/useFishingData.js
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchWeatherData } from '../services/weatherService';
@@ -9,12 +8,12 @@ const areObjectsEqual = (obj1, obj2) => {
   return JSON.stringify(obj1) === JSON.stringify(obj2);
 };
 
-export const useFishingData = (location, species, cityState, date, weatherData, timeOfDay) => {
+export const useFishingData = (location, species, cityState, date, timeOfDay) => {
   const [advice, setAdvice] = useState(null);
   const [forecastData, setForecastData] = useState(null);
   const [waterData, setWaterData] = useState(null);
   const [tempRange, setTempRange] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const retryRequest = async (fn, maxRetries = 3, delay = 1000) => {
@@ -24,7 +23,6 @@ export const useFishingData = (location, species, cityState, date, weatherData, 
       } catch (err) {
         if (err.response?.status === 429 && i < maxRetries - 1) {
           const waitTime = delay * Math.pow(2, i);
-          console.warn(`Rate limit hit, retrying in ${waitTime}ms... (Attempt ${i + 1}/${maxRetries})`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         } else {
           throw err;
@@ -37,7 +35,7 @@ export const useFishingData = (location, species, cityState, date, weatherData, 
     try {
       await AsyncStorage.setItem(key, JSON.stringify(data));
     } catch (err) {
-      console.error('Error caching weather data:', err.message);
+      // Silent error handling
     }
   };
 
@@ -46,7 +44,6 @@ export const useFishingData = (location, species, cityState, date, weatherData, 
       const cached = await AsyncStorage.getItem(key);
       return cached ? JSON.parse(cached) : null;
     } catch (err) {
-      console.error('Error retrieving cached weather data:', err.message);
       return null;
     }
   };
@@ -110,15 +107,11 @@ export const useFishingData = (location, species, cityState, date, weatherData, 
         const cachedForecast = await getCachedWeatherData(weatherCacheKey);
         if (cachedForecast) {
           forecast = cachedForecast;
-        } else if (weatherData) {
-          forecast = { forecastMetrics: weatherData, dailyForecasts: [] };
-          await cacheWeatherData(weatherCacheKey, forecast);
         } else {
           forecast = await retryRequest(() => fetchWeatherData(lat, lon, date));
           await cacheWeatherData(weatherCacheKey, forecast);
         }
         if (!areObjectsEqual(forecastData, forecast)) {
-          console.log('Forecast Data Set:', forecast);
           setForecastData(forecast);
         }
 
@@ -127,8 +120,7 @@ export const useFishingData = (location, species, cityState, date, weatherData, 
           water = await retryRequest(() => fetchWaterData(lat, lon, date, forecast.dailyForecasts || []));
           setWaterData(water);
         } catch (err) {
-          console.error('Water Data Error:', err.message);
-          setError(`Water Data Fetch Failed: ${err.message}`);
+          setError(prev => prev ? `${prev}; Water Data Fetch Failed: ${err.message}` : `Water Data Fetch Failed: ${err.message}`);
         }
 
         let speciesRange = null;
@@ -136,7 +128,6 @@ export const useFishingData = (location, species, cityState, date, weatherData, 
           speciesRange = await retryRequest(() => getSpeciesTempRange(species));
           setTempRange(speciesRange);
         } catch (err) {
-          console.error('Species Temp Range Error:', err.message);
           setError(prev => prev ? `${prev}; Species Temp Range Fetch Failed: ${err.message}` : `Species Temp Range Fetch Failed: ${err.message}`);
         }
 
@@ -146,7 +137,6 @@ export const useFishingData = (location, species, cityState, date, weatherData, 
           );
           setAdvice(adviceResult);
         } catch (err) {
-          console.error('Fishing Advice Error:', err.message);
           setAdvice({
             bait: 'Spinners or worms',
             strategy: 'Fish near cover or deep pools, adjusted for recent weather.',
@@ -159,15 +149,14 @@ export const useFishingData = (location, species, cityState, date, weatherData, 
           setError(prev => prev ? `${prev}; Fishing Advice Fetch Failed: ${err.message}` : `Fishing Advice Fetch Failed: ${err.message}`);
         }
       } catch (err) {
-        console.error('Initial Fetch Error:', err.message);
-        setError(err.message);
+        setError(err.message || 'Failed to fetch fishing data. Please try again.');
         setForecastData(null);
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, [location, species, cityState, weatherData, date, timeOfDay]);
+  }, [location, species, cityState, date, timeOfDay]);
 
   useEffect(() => {
     if (forecastData?.forecastMetrics && (waterData || tempRange)) {
@@ -177,7 +166,6 @@ export const useFishingData = (location, species, cityState, date, weatherData, 
         forecastMetrics: { ...forecastData.forecastMetrics, rating },
       };
       if (!areObjectsEqual(forecastData, updatedForecastData)) {
-        console.log('Updated Forecast Data with Rating:', updatedForecastData);
         setForecastData(updatedForecastData);
       }
     }

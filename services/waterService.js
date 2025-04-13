@@ -1,4 +1,7 @@
 import axios from 'axios';
+import { logger } from '../utils/logger';
+
+const isDebug = process.env.NODE_ENV === 'development';
 
 const forecastWaterData = (waterTempF, gageHeightFt, daysAhead, dailyForecasts) => {
   const forecast = [];
@@ -47,7 +50,9 @@ export const fetchWaterData = async (lat, lon, date, dailyForecasts) => {
     startDT: lastAvailableDate,
     endDT: lastAvailableDate
   };
-  console.log('Fetching USGS baseline:', `${usgsUrl}?${new URLSearchParams(usgsParams).toString()}`);
+  if (isDebug) {
+    logger.log('Fetching USGS baseline:', `${usgsUrl}?${new URLSearchParams(usgsParams).toString()}`);
+  }
   const usgsResponse = await axios.get(usgsUrl, { params: usgsParams });
   const timeSeries = usgsResponse.data.value.timeSeries;
   if (timeSeries.length > 0) {
@@ -69,7 +74,9 @@ export const fetchWaterData = async (lat, lon, date, dailyForecasts) => {
   if (daysAhead > 0) {
     const forecastWater = forecastWaterData(waterMetrics.waterTempF, waterMetrics.gageHeightFt, daysAhead, dailyForecasts);
     waterMetrics = forecastWater[daysAhead - 1];
-    console.log('Forecasted water data for', date, ':', waterMetrics);
+    if (isDebug) {
+      logger.log('Forecasted water data for', date, ':', waterMetrics);
+    }
   }
 
   return waterMetrics;

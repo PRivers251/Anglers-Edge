@@ -1,6 +1,9 @@
 import axios from 'axios';
 import { OPEN_WEATHER_MAP_API_KEY } from '@env';
 import { validateDate } from '../utils/dateUtils';
+import { logger } from '../utils/logger';
+
+const isDebug = process.env.NODE_ENV === 'development';
 
 const getMoonPhaseName = (moonPhase) => {
   if (moonPhase === undefined || moonPhase === null || moonPhase === 'Not available') return 'Unknown';
@@ -18,7 +21,9 @@ const getMoonPhaseName = (moonPhase) => {
 export const fetchWeatherData = async (lat, lon, date) => {
   const weatherUrl = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly,alerts&units=imperial&appid=${OPEN_WEATHER_MAP_API_KEY}`;
   const response = await axios.get(weatherUrl);
-  console.log('Weather API Response:', JSON.stringify(response.data, null, 2)); // Log the full response for debugging
+  if (isDebug) {
+    logger.log('Weather API Response:', JSON.stringify(response.data, null, 2));
+  }
 
   const todayLocal = new Date();
   todayLocal.setHours(0, 0, 0, 0);
@@ -35,7 +40,9 @@ export const fetchWeatherData = async (lat, lon, date) => {
 
   const dailyForecasts = response.data.daily;
   const dayOffset = Math.floor((selectedLocal - todayLocal) / (1000 * 60 * 60 * 24));
-  console.log('Day offset:', dayOffset, 'Selected date:', selectedLocal.toISOString().split('T')[0]);
+  if (isDebug) {
+    logger.log('Day offset:', dayOffset, 'Selected date:', selectedLocal.toISOString().split('T')[0]);
+  }
 
   let dailyForecast = dailyForecasts[dayOffset] || dailyForecasts[dailyForecasts.length - 1];
   if (!dailyForecast) {
@@ -64,11 +71,14 @@ export const fetchWeatherData = async (lat, lon, date) => {
     windDeg: dailyForecast.wind_deg ?? 0,
     pressureHpa: dailyForecast.pressure ?? 1013,
     moonPhase: moonPhase,
-    cloudCover: dailyForecast.clouds ?? 0, // Ensure cloudCover is always a number
-    humidity: dailyForecast.humidity ?? 0, // Ensure humidity is always a number
+    cloudCover: dailyForecast.clouds ?? 0,
+    humidity: dailyForecast.humidity ?? 0,
     tempTrend: tempTrend,
   };
 
-  console.log('Forecast Metrics:', forecastMetrics);
+  if (isDebug) {
+    logger.log('Forecast Metrics:', forecastMetrics);
+  }
+
   return { forecastMetrics, dailyForecasts };
 };

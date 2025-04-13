@@ -1,7 +1,6 @@
-// app/results.js
 import React, { useMemo } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ScrollView, View, ImageBackground, TouchableOpacity, Text } from 'react-native';
+import { ScrollView, View, ImageBackground, TouchableOpacity, Text, Image } from 'react-native';
 import { formatDate } from '../utils/dateUtils';
 import { GlobalStyles } from '../styles/GlobalStyles';
 import { ResultsStyles } from '../styles/ResultsStyles';
@@ -18,7 +17,6 @@ export default function ResultsScreen() {
   const params = useLocalSearchParams();
 
   const location = useMemo(() => (params.location ? JSON.parse(params.location) : null), [params.location]);
-  const weatherData = useMemo(() => (params.weatherData ? JSON.parse(params.weatherData) : null), [params.weatherData]);
   const { species, cityState, date, timeOfDay } = params;
 
   const { advice, forecastData, loading, error } = useFishingData(
@@ -26,7 +24,6 @@ export default function ResultsScreen() {
     species,
     cityState,
     date,
-    weatherData,
     timeOfDay
   );
 
@@ -40,6 +37,70 @@ export default function ResultsScreen() {
   } = useFeedback(species, cityState, date, timeOfDay, advice);
 
   const showLoading = useMinimumLoading(loading, 1000);
+
+  const weatherConditionIcon = useMemo(() => {
+    if (!forecastData?.dailyForecasts || !forecastData.dailyForecasts.length) {
+      return null;
+    }
+
+    const todayLocal = new Date();
+    todayLocal.setHours(0, 0, 0, 0);
+    const selectedLocal = new Date(`${date}T00:00:00`);
+    selectedLocal.setHours(0, 0, 0, 0);
+    const dayOffset = Math.floor((selectedLocal - todayLocal) / (1000 * 60 * 60 * 24));
+    const dailyForecast = forecastData.dailyForecasts[dayOffset] || forecastData.dailyForecasts[forecastData.dailyForecasts.length - 1];
+
+    if (!dailyForecast?.weather?.[0]?.main) {
+      return null;
+    }
+
+    const condition = dailyForecast.weather[0].main.toLowerCase();
+    const isDaytime = timeOfDay === 'Morning' || timeOfDay === 'Afternoon';
+
+    switch (condition) {
+      case 'clear':
+        return isDaytime ? require('../assets/weatherIcons/day_clear.png') : require('../assets/weatherIcons/night_clear.png');
+      case 'clouds':
+        return require('../assets/weatherIcons/cloudy.png');
+      case 'rain':
+      case 'drizzle':
+        return require('../assets/weatherIcons/rain.png');
+      case 'snow':
+        return require('../assets/weatherIcons/snow.png');
+      case 'thunderstorm':
+        return require('../assets/weatherIcons/thunderstorm.png');
+      default:
+        return require('../assets/weatherIcons/foggy.png');
+    }
+  }, [forecastData, date, timeOfDay]);
+
+  const avgTemp = useMemo(() => {
+    if (!forecastData?.forecastMetrics) return null;
+
+    const { lowTempF, highTempF } = forecastData.forecastMetrics;
+    const range = highTempF - lowTempF;
+
+    let factor;
+    switch (timeOfDay) {
+      case 'Morning':
+        factor = 0.25;
+        break;
+      case 'Afternoon':
+        factor = 0.75;
+        break;
+      case 'Evening':
+        factor = 0.50;
+        break;
+      case 'Night':
+        factor = 0.10;
+        break;
+      default:
+        factor = 0.50;
+    }
+
+    const avg = lowTempF + (range * factor);
+    return Math.round(avg);
+  }, [forecastData, timeOfDay]);
 
   if (showLoading) {
     return (
@@ -58,8 +119,41 @@ export default function ResultsScreen() {
             {species || 'Unknown Species'} Fishing in {cityState || 'Unknown Location'}
           </Text>
         </View>
+        {forecastData?.forecastMetrics && (
+          <View style={ResultsStyles.temperatureSection}>
+            <View style={ResultsStyles.temperatureContainer}>
+              <View style={ResultsStyles.tempIconRow}>
+                <Text style={ResultsStyles.temperatureText}>
+                  {avgTemp !== null ? `${avgTemp}°F` : 'N/A'}
+                </Text>
+                {weatherConditionIcon && (
+                  <Image
+                    source={weatherConditionIcon}
+                    style={ResultsStyles.weatherIcon}
+                  />
+                )}
+              </View>
+              <View style={ResultsStyles.tempSubtitleContainer}>
+                <Text style={ResultsStyles.tempRangeSubtitle}>
+                  High: {Math.round(forecastData.forecastMetrics.highTempF)}°F Low: {Math.round(forecastData.forecastMetrics.lowTempF)}°F
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
         <View style={ResultsStyles.forecastSection}>
-          <ForecastCard forecastMetrics={forecastData?.forecastMetrics} error={error} />
+          <ForecastCard
+            forecastMetrics={
+              forecastData?.forecastMetrics
+                ? {
+                    ...forecastData.forecastMetrics,
+                    lowTempF: undefined,
+                    highTempF: undefined,
+                  }
+                : null
+            }
+            error={error}
+          />
         </View>
         <View style={GlobalStyles.content}>
           <View style={ResultsStyles.adviceSection}>

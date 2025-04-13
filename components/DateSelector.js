@@ -20,7 +20,6 @@ const DateSelector = ({ date, setDate, timeOfDay, setTimeOfDay }) => {
     newDate.setDate(newDate.getDate() + days);
     newDate.setHours(0, 0, 0, 0);
     if (newDate >= minDate && newDate <= maxDate) {
-      console.log('Selected Date (Button):', newDate.toISOString().split('T')[0]);
       setDate(newDate);
     }
   };
@@ -67,7 +66,6 @@ const DateSelector = ({ date, setDate, timeOfDay, setTimeOfDay }) => {
     setTimeModalVisible(false);
   };
 
-  console.log('DateSelector Render:', { date: date.toISOString(), timeOfDay });
 
   return (
     <View style={DateSelectorStyles.dateSection}>

@@ -17,10 +17,6 @@ const ForecastCard = ({ forecastMetrics, error }) => {
     <View style={ResultsStyles.forecastCard}>
       <View style={ResultsStyles.cardContent}>
         <Text style={ResultsStyles.forecastField}>
-          <Text style={GlobalStyles.label}>Temperature: </Text>
-          {forecastMetrics.lowTempF}–{forecastMetrics.highTempF}°F
-        </Text>
-        <Text style={ResultsStyles.forecastField}>
           <Text style={GlobalStyles.label}>Pressure: </Text>
           {forecastMetrics.pressureHpa} hPa
         </Text>

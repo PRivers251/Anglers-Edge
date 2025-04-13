@@ -1,5 +1,4 @@
-// app/index.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -25,6 +24,9 @@ import * as ExpoLinking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useMinimumLoading } from '../hooks/useMinimumLoading';
+import { logger } from '../utils/logger';
+
+const isDebug = process.env.NODE_ENV === 'development';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -48,7 +50,6 @@ export default function HomeScreen() {
     customSpecies,
     setCustomSpecies,
     speciesList,
-    weatherData,
     isFetchingSpecies,
     handleFetchSpecies,
   } = useSpecies();
@@ -59,7 +60,6 @@ export default function HomeScreen() {
     species,
     customSpecies,
     cityState,
-    weatherData,
     date,
     timeOfDay
   );
@@ -77,7 +77,9 @@ export default function HomeScreen() {
         });
         setIsVerifying(false);
         if (error) {
-          console.error('Verification Error:', error.message);
+          if (isDebug) {
+            logger.error('Deep link verification error:', error.message);
+          }
           alert('Failed to confirm your account. Please try again or contact Patrick@ProAnglerAI.com for support.');
         } else {
           alert('Account confirmed! Please log in to start fishing smarter with ProAnglerAI.');
@@ -100,32 +102,31 @@ export default function HomeScreen() {
     return () => subscription.remove();
   }, [router]);
 
-  const fetchSpecies = async () => {
+  const fetchSpecies = useCallback(async () => {
     let loc = location;
     if (!useCurrentLocation) {
       loc = await resolveManualLocation(`${manualCity}, ${manualState}`);
       if (loc) setLocation(loc);
     }
     if (loc) {
+      if (isDebug) {
+        logger.log('Fetching species for location:', cityState || `${manualCity}, ${manualState}`);
+      }
       await handleFetchSpecies(useCurrentLocation, cityState, manualCity, manualState, loc);
     }
-  };
+  }, [
+    location,
+    useCurrentLocation,
+    manualCity,
+    manualState,
+    cityState,
+    resolveManualLocation,
+    handleFetchSpecies,
+  ]);
 
   if (showLoading) {
     return <LoadingSpinner />;
   }
-
-  console.log('HomeScreen Render Props:', {
-    username,
-    cityState,
-    species,
-    speciesList,
-    timeOfDay,
-    loading,
-    isLoading,
-    isFetchingSpecies,
-    isFetchingLocation,
-  });
 
   return (
     <ImageBackground
