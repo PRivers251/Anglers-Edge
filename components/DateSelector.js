@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, FlatList } from 'react-native';
 import { GlobalStyles } from '../styles/GlobalStyles';
 import { DateSelectorStyles } from '../styles/DateSelectorStyles';
@@ -12,8 +12,19 @@ const DateSelector = ({ date, setDate, timeOfDay, setTimeOfDay }) => {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [timeModalVisible, setTimeModalVisible] = useState(false);
-  const timeOptions = ['Morning', 'Midday', 'Evening'];
-  const [timeIndex, setTimeIndex] = useState(timeOptions.indexOf(timeOfDay));
+  const timeOptions = ['Morning', 'Midday', 'Evening', 'Night'];
+  const [timeIndex, setTimeIndex] = useState(() => {
+    const index = timeOptions.indexOf(timeOfDay);
+    return index !== -1 ? index : 0; // Default to Morning if timeOfDay is invalid
+  });
+
+  // Sync timeIndex with timeOfDay prop changes
+  useEffect(() => {
+    const index = timeOptions.indexOf(timeOfDay);
+    if (index !== -1 && index !== timeIndex) {
+      setTimeIndex(index);
+    }
+  }, [timeOfDay]);
 
   const adjustDate = (days) => {
     const newDate = new Date(date);
@@ -61,11 +72,12 @@ const DateSelector = ({ date, setDate, timeOfDay, setTimeOfDay }) => {
   };
 
   const handleSelectTime = (selectedTime) => {
-    setTimeOfDay(selectedTime);
-    setTimeIndex(timeOptions.indexOf(selectedTime));
+    if (timeOptions.includes(selectedTime)) {
+      setTimeOfDay(selectedTime);
+      setTimeIndex(timeOptions.indexOf(selectedTime));
+    }
     setTimeModalVisible(false);
   };
-
 
   return (
     <View style={DateSelectorStyles.dateSection}>
@@ -117,7 +129,7 @@ const DateSelector = ({ date, setDate, timeOfDay, setTimeOfDay }) => {
           style={[DateSelectorStyles.dateDisplay, DateSelectorStyles.selectorDisplay]}
           onPress={() => setTimeModalVisible(true)}
         >
-          <Text style={DateSelectorStyles.dateText}>{timeOfDay}</Text>
+          <Text style={DateSelectorStyles.dateText}>{timeOfDay || timeOptions[0]}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity

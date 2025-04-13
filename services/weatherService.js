@@ -18,8 +18,8 @@ const getMoonPhaseName = (moonPhase) => {
   return 'Unknown';
 };
 
-export const fetchWeatherData = async (lat, lon, date) => {
-  const weatherUrl = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly,alerts&units=imperial&appid=${OPEN_WEATHER_MAP_API_KEY}`;
+export const fetchWeatherData = async (lat, lon, date, timeOfDay) => {
+  const weatherUrl = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=minutely,alerts&units=imperial&appid=${OPEN_WEATHER_MAP_API_KEY}`;
   const response = await axios.get(weatherUrl);
   if (isDebug) {
     logger.log('Weather API Response:', JSON.stringify(response.data, null, 2));
@@ -39,6 +39,7 @@ export const fetchWeatherData = async (lat, lon, date) => {
   }
 
   const dailyForecasts = response.data.daily;
+  const hourlyForecasts = response.data.hourly;
   const dayOffset = Math.floor((selectedLocal - todayLocal) / (1000 * 60 * 60 * 24));
   if (isDebug) {
     logger.log('Day offset:', dayOffset, 'Selected date:', selectedLocal.toISOString().split('T')[0]);
@@ -47,6 +48,39 @@ export const fetchWeatherData = async (lat, lon, date) => {
   let dailyForecast = dailyForecasts[dayOffset] || dailyForecasts[dailyForecasts.length - 1];
   if (!dailyForecast) {
     throw new Error('No forecast available for the selected date.');
+  }
+
+  // Determine the target hour based on timeOfDay
+  let targetHour;
+  switch (timeOfDay) {
+    case 'Morning':
+      targetHour = 9; // 9 AM
+      break;
+    case 'Afternoon':
+      targetHour = 15; // 3 PM
+      break;
+    case 'Evening':
+      targetHour = 18; // 6 PM
+      break;
+    case 'Night':
+      targetHour = 21; // 9 PM
+      break;
+    default:
+      targetHour = 12; // Noon as fallback
+  }
+
+  // Find the closest hourly forecast for the selected date and time
+  let hourlyForecast = null;
+  if (hourlyForecasts && hourlyForecasts.length > 0) {
+    const targetDateTime = new Date(selectedLocal);
+    targetDateTime.setHours(targetHour, 0, 0, 0);
+    const targetUnixTime = Math.floor(targetDateTime.getTime() / 1000);
+
+    hourlyForecast = hourlyForecasts.reduce((closest, forecast) => {
+      const forecastTime = forecast.dt;
+      const closestTime = closest ? closest.dt : Infinity;
+      return Math.abs(forecastTime - targetUnixTime) < Math.abs(closestTime - targetUnixTime) ? forecast : closest;
+    }, null);
   }
 
   // Calculate 3-day temperature trend (if available)
@@ -67,18 +101,20 @@ export const fetchWeatherData = async (lat, lon, date) => {
     lowTempF: dailyForecast.temp?.min ?? 0,
     highTempF: dailyForecast.temp?.max ?? 0,
     totalPrecipIn: dailyForecast.rain ?? 0,
-    avgWindMph: dailyForecast.wind_speed ?? 0,
-    windDeg: dailyForecast.wind_deg ?? 0,
-    pressureHpa: dailyForecast.pressure ?? 1013,
+    precipProbability: dailyForecast.pop ? dailyForecast.pop * 100 : 0, // Add precipitation probability
+    avgWindMph: hourlyForecast?.wind_speed ?? dailyForecast.wind_speed ?? 0,
+    windDeg: hourlyForecast?.wind_deg ?? dailyForecast.wind_deg ?? 0,
+    pressureHpa: hourlyForecast?.pressure ?? dailyForecast.pressure ?? 1013,
     moonPhase: moonPhase,
-    cloudCover: dailyForecast.clouds ?? 0,
-    humidity: dailyForecast.humidity ?? 0,
+    cloudCover: hourlyForecast?.clouds ?? dailyForecast.clouds ?? 0,
+    humidity: hourlyForecast?.humidity ?? dailyForecast.humidity ?? 0,
     tempTrend: tempTrend,
+    hourlyTempF: hourlyForecast?.temp ?? null, // Temperature at specific time
   };
 
   if (isDebug) {
     logger.log('Forecast Metrics:', forecastMetrics);
   }
 
-  return { forecastMetrics, dailyForecasts };
+  return { forecastMetrics, dailyForecasts, hourlyForecasts };
 };

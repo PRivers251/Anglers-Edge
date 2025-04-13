@@ -103,15 +103,10 @@ export const ResultsStyles = StyleSheet.create({
   temperatureContainer: {
     flexDirection: 'column', // Stack the temp/icon row and subtitle vertically
     alignItems: 'center', // Center the content horizontally
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0)', // Completely transparent background
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   tempIconRow: {
     flexDirection: 'row', // Temperature and icon side by side
@@ -121,17 +116,24 @@ export const ResultsStyles = StyleSheet.create({
     marginTop: 4, // Space between the temp/icon row and the subtitle
   },
   temperatureText: {
-    fontSize: 24,
+    fontSize: 100, // Increased from 24 to 32 for larger text
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff', // Changed to white for better contrast against background
+    textShadowColor: '#000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   tempRangeSubtitle: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 20, // Increased from 14 to 16 for better readability
+    color: 'white', // Changed to turquoise for high contrast against dark background
+    textShadowColor: '#000',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 1,
+    backgroundColor: '#FFFFF'
   },
   weatherIcon: {
-    width: 40,
-    height: 40,
+    width: 100, // Increased from 40 to 60 for larger icon
+    height: 100, // Increased from 40 to 60
     marginLeft: 10, // Space between the temperature text and the icon
   },
 });

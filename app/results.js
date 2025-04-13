@@ -74,9 +74,24 @@ export default function ResultsScreen() {
     }
   }, [forecastData, date, timeOfDay]);
 
+  const rainChance = useMemo(() => {
+    if (!forecastData?.forecastMetrics) {
+      return null;
+    }
+    return forecastData.forecastMetrics.precipProbability
+      ? Math.round(forecastData.forecastMetrics.precipProbability)
+      : null;
+  }, [forecastData]);
+
   const avgTemp = useMemo(() => {
     if (!forecastData?.forecastMetrics) return null;
 
+    // Prefer hourly temperature if available
+    if (forecastData.forecastMetrics.hourlyTempF) {
+      return Math.round(forecastData.forecastMetrics.hourlyTempF);
+    }
+
+    // Fallback to daily-based estimation
     const { lowTempF, highTempF } = forecastData.forecastMetrics;
     const range = highTempF - lowTempF;
 
@@ -135,8 +150,13 @@ export default function ResultsScreen() {
               </View>
               <View style={ResultsStyles.tempSubtitleContainer}>
                 <Text style={ResultsStyles.tempRangeSubtitle}>
-                  High: {Math.round(forecastData.forecastMetrics.highTempF)}°F Low: {Math.round(forecastData.forecastMetrics.lowTempF)}°F
+                  High: {Math.round(forecastData.forecastMetrics.highTempF)}°F  -  Low: {Math.round(forecastData.forecastMetrics.lowTempF)}°F
                 </Text>
+                {weatherConditionIcon?.toString().includes('rain.png') && rainChance !== null && (
+                  <Text style={ResultsStyles.tempRangeSubtitle}>
+                    Rain Chance: {rainChance}%
+                  </Text>
+                )}
               </View>
             </View>
           </View>
@@ -149,6 +169,7 @@ export default function ResultsScreen() {
                     ...forecastData.forecastMetrics,
                     lowTempF: undefined,
                     highTempF: undefined,
+                    hourlyTempF: undefined, // Exclude hourlyTempF from ForecastCard
                   }
                 : null
             }

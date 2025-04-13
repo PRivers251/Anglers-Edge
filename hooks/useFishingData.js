@@ -1,175 +1,75 @@
 import { useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchWeatherData } from '../services/weatherService';
 import { fetchWaterData } from '../services/waterService';
 import { getFishingAdvice, getSpeciesTempRange } from '../services/adviceService';
+import { logger } from '../utils/logger';
 
-const areObjectsEqual = (obj1, obj2) => {
-  return JSON.stringify(obj1) === JSON.stringify(obj2);
-};
+const isDebug = process.env.NODE_ENV === 'development';
 
 export const useFishingData = (location, species, cityState, date, timeOfDay) => {
   const [advice, setAdvice] = useState(null);
   const [forecastData, setForecastData] = useState(null);
-  const [waterData, setWaterData] = useState(null);
-  const [tempRange, setTempRange] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const retryRequest = async (fn, maxRetries = 3, delay = 1000) => {
-    for (let i = 0; i < maxRetries; i++) {
-      try {
-        return await fn();
-      } catch (err) {
-        if (err.response?.status === 429 && i < maxRetries - 1) {
-          const waitTime = delay * Math.pow(2, i);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-        } else {
-          throw err;
-        }
-      }
-    }
-  };
-
-  const cacheWeatherData = async (key, data) => {
-    try {
-      await AsyncStorage.setItem(key, JSON.stringify(data));
-    } catch (err) {
-      // Silent error handling
-    }
-  };
-
-  const getCachedWeatherData = async (key) => {
-    try {
-      const cached = await AsyncStorage.getItem(key);
-      return cached ? JSON.parse(cached) : null;
-    } catch (err) {
-      return null;
-    }
-  };
-
-  const calculateFishingScore = (forecastMetrics, waterMetrics, speciesTempRange) => {
-    let score = 50;
-    if (waterMetrics?.waterTempF && speciesTempRange) {
-      if (waterMetrics.waterTempF >= speciesTempRange.min && waterMetrics.waterTempF <= speciesTempRange.max) score += 20;
-      else if (waterMetrics.waterTempF < speciesTempRange.min - 10 || waterMetrics.waterTempF > speciesTempRange.max + 10) score -= 10;
-    }
-    if (forecastMetrics.lowTempF >= 59 && forecastMetrics.highTempF <= 80) score += 10;
-    else if (forecastMetrics.highTempF - forecastMetrics.lowTempF > 20) score -= 5;
-    if (forecastMetrics.totalPrecipIn > 0 && forecastMetrics.totalPrecipIn <= 0.1) score += 5;
-    else if (forecastMetrics.totalPrecipIn > 0.5) score -= 5;
-    if (forecastMetrics.avgWindMph >= 3 && forecastMetrics.avgWindMph <= 10) score += 5;
-    else if (forecastMetrics.avgWindMph > 15) score -= 10;
-    if (forecastMetrics.windDeg >= 45 && forecastMetrics.windDeg <= 135) score += 3;
-    if (forecastMetrics.pressureHpa < 1013) score += 5;
-    if (typeof forecastMetrics.moonPhase === 'number') {
-      if (forecastMetrics.moonPhase === 0 || forecastMetrics.moonPhase === 0.5) score += 10;
-      else if (forecastMetrics.moonPhase === 0.25 || forecastMetrics.moonPhase === 0.75) score += 5;
-      else if (forecastMetrics.moonPhase > 0 && forecastMetrics.moonPhase < 1) score += 3;
-    } else {
-      const moonPhaseMap = {
-        'New Moon': 0,
-        'First Quarter': 0.25,
-        'Full Moon': 0.5,
-        'Last Quarter': 0.75,
-        'Waxing Crescent': 0.125,
-        'Waxing Gibbous': 0.375,
-        'Waning Gibbous': 0.625,
-        'Waning Crescent': 0.875,
-      };
-      const moonPhaseValue = moonPhaseMap[forecastMetrics.moonPhase] || 0;
-      if (moonPhaseValue === 0 || moonPhaseValue === 0.5) score += 10;
-      else if (moonPhaseValue === 0.25 || moonPhaseValue === 0.75) score += 5;
-      else if (moonPhaseValue > 0 && moonPhaseValue < 1) score += 3;
-    }
-    if (waterMetrics?.gageHeightFt !== null) score += 5;
-    if (forecastMetrics.cloudCover >= 70) score += 5;
-    if (forecastMetrics.humidity >= 70 && forecastMetrics.tempTrend === 'Warming') score += 3;
-    if (waterMetrics?.flowRateCfs && parseFloat(waterMetrics.flowRateCfs) > 500) score -= 5;
-
-    return Math.round((Math.max(0, Math.min(100, score)) / 100) * 5) || 1;
-  };
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
+
       try {
-        if (!location?.coords?.latitude || !location?.coords?.longitude) {
-          throw new Error('Location coordinates are missing.');
+        if (!location?.coords || !date || !timeOfDay) {
+          throw new Error('Missing required parameters');
         }
 
-        const lat = location.coords.latitude;
-        const lon = location.coords.longitude;
+        // Fetch weather data
+        const weatherResult = await fetchWeatherData(
+          location.coords.latitude,
+          location.coords.longitude,
+          date,
+          timeOfDay
+        );
 
-        let forecast;
-        const weatherCacheKey = `weather_${lat}_${lon}_${date}`;
-        const cachedForecast = await getCachedWeatherData(weatherCacheKey);
-        if (cachedForecast) {
-          forecast = cachedForecast;
-        } else {
-          forecast = await retryRequest(() => fetchWeatherData(lat, lon, date));
-          await cacheWeatherData(weatherCacheKey, forecast);
-        }
-        if (!areObjectsEqual(forecastData, forecast)) {
-          setForecastData(forecast);
-        }
+        // Fetch water data
+        const waterData = await fetchWaterData(
+          location.coords.latitude,
+          location.coords.longitude,
+          date,
+          weatherResult.dailyForecasts
+        );
 
-        let water = null;
-        try {
-          water = await retryRequest(() => fetchWaterData(lat, lon, date, forecast.dailyForecasts || []));
-          setWaterData(water);
-        } catch (err) {
-          setError(prev => prev ? `${prev}; Water Data Fetch Failed: ${err.message}` : `Water Data Fetch Failed: ${err.message}`);
-        }
+        // Fetch species temperature range
+        const speciesTempRange = await getSpeciesTempRange(species !== 'None' ? species : null);
 
-        let speciesRange = null;
-        try {
-          speciesRange = await retryRequest(() => getSpeciesTempRange(species));
-          setTempRange(speciesRange);
-        } catch (err) {
-          setError(prev => prev ? `${prev}; Species Temp Range Fetch Failed: ${err.message}` : `Species Temp Range Fetch Failed: ${err.message}`);
-        }
+        // Fetch fishing advice
+        const adviceResult = await getFishingAdvice(
+          location,
+          species,
+          cityState,
+          weatherResult.forecastMetrics,
+          waterData,
+          speciesTempRange,
+          timeOfDay
+        );
 
-        try {
-          const adviceResult = await retryRequest(() =>
-            getFishingAdvice(location, species, cityState, forecast.forecastMetrics, water, speciesRange, timeOfDay)
-          );
-          setAdvice(adviceResult);
-        } catch (err) {
-          setAdvice({
-            bait: 'Spinners or worms',
-            strategy: 'Fish near cover or deep pools, adjusted for recent weather.',
-            tackle: {
-              rod: 'Medium 7\' rod, moderate action',
-              line: '10 lb monofilament',
-            },
-            additional_notes: 'Fallback advice due to API error.',
-          });
-          setError(prev => prev ? `${prev}; Fishing Advice Fetch Failed: ${err.message}` : `Fishing Advice Fetch Failed: ${err.message}`);
-        }
+        setForecastData({
+          forecastMetrics: weatherResult.forecastMetrics,
+          dailyForecasts: weatherResult.dailyForecasts,
+          hourlyForecasts: weatherResult.hourlyForecasts,
+        });
+        setAdvice(adviceResult);
       } catch (err) {
-        setError(err.message || 'Failed to fetch fishing data. Please try again.');
-        setForecastData(null);
+        if (isDebug) {
+          logger.error('Fishing data fetch error:', err.message);
+        }
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     };
+
     fetchData();
   }, [location, species, cityState, date, timeOfDay]);
 
-  useEffect(() => {
-    if (forecastData?.forecastMetrics && (waterData || tempRange)) {
-      const rating = calculateFishingScore(forecastData.forecastMetrics, waterData, tempRange);
-      const updatedForecastData = {
-        ...forecastData,
-        forecastMetrics: { ...forecastData.forecastMetrics, rating },
-      };
-      if (!areObjectsEqual(forecastData, updatedForecastData)) {
-        setForecastData(updatedForecastData);
-      }
-    }
-  }, [forecastData, waterData, tempRange]);
-
-  return { advice, forecastData, waterData, tempRange, loading, error };
+  return { advice, forecastData, loading, error };
 };
