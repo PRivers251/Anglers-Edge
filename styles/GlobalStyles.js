@@ -36,7 +36,6 @@ export const GlobalStyles = StyleSheet.create({
     elevation: 5, 
     width: '100%' 
   },
-  
   disabledButton: { backgroundColor: '#A9A9A9', opacity: 0.7 },
   buttonText: { fontSize: 16, color: '#fff', fontWeight: '600' },
   buttonContainer: {

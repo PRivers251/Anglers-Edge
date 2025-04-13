@@ -2,13 +2,18 @@
 import { StyleSheet } from 'react-native';
 
 export const DateSelectorStyles = StyleSheet.create({
-  dateSection: { paddingHorizontal: 30, marginVertical: 50, alignItems: 'center' },
-  
+  dateSection: { 
+    paddingHorizontal: 30, 
+    marginVertical: 50, 
+    alignItems: 'center', 
+    width: '100%', // Match buttonSectionContainer
+  },
   dateButtonContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 10,
+    width: '100%', // Full width within parent
   },
   dateArrowButton: {
     backgroundColor: '#00CED1',
@@ -29,20 +34,20 @@ export const DateSelectorStyles = StyleSheet.create({
     borderRadius: 8,
     minWidth: 120,
     alignItems: 'center',
+    width: '100%', // Full width within parent
   },
   dateText: {
     fontSize: 16,
     color: '#333',
     fontWeight: '600',
   },
-
   selectorContainer: {
-    width: '80%',
+    width: '100%', // Full width within parent
   },
   timeSelectorContainer: {
     marginTop: 20,
+    width: '100%', // Full width within parent
   },
-
   selectorDisplay: {
     flex: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
@@ -50,5 +55,6 @@ export const DateSelectorStyles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: 'center',
+    width: '100%', // Full width within parent
   },
 });

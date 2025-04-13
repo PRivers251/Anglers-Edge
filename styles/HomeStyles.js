@@ -15,10 +15,9 @@ export const HomeStyles = StyleSheet.create({
     borderColor: '#00CED1',
     backgroundColor: 'transparent',
   },
-
   buttonSection: {  
     alignItems: 'center', 
     marginBottom: 20,
-    width: '100%',
+    width: '80%', // Ensure consistency
   },
 });

@@ -3,10 +3,9 @@ import { StyleSheet } from 'react-native';
 
 export const LocationToggleStyles = StyleSheet.create({
   locationSection: { 
-    paddingHorizontal: 30, 
     marginBottom: 20, 
     alignItems: 'center',
-    width: '100%',
+    width: '100%', // Matches buttonSectionContainer
   },
   locationText: { 
     fontSize: 16, 
@@ -17,7 +16,6 @@ export const LocationToggleStyles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 }, 
     textShadowRadius: 2 
   },
-  
   input: { 
     height: 50,
     minHeight: 50,
@@ -36,13 +34,12 @@ export const LocationToggleStyles = StyleSheet.create({
     elevation: 2,
     fontSize: 16,
   },
-
   manualLocationContainer: {
     alignItems: 'center',
     width: '100%',
     marginBottom: 20,
+    paddingHorizontal: 30, // Moved padding here
   },
-
   toggleContainer: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -57,8 +54,12 @@ export const LocationToggleStyles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
-    width: '70%',
+    width: '100%',
   },
-
-  toggleLabel: { fontSize: 16, color: '#333', marginRight: 10, fontWeight: '600' },
+  toggleLabel: { 
+    fontSize: 16, 
+    color: '#333', 
+    marginRight: 10, 
+    fontWeight: '600' 
+  },
 });
