@@ -1,4 +1,3 @@
-// styles/LoadingSpinnerStyles.js
 import { StyleSheet, Platform } from 'react-native';
 
 export const LoadingSpinnerStyles = StyleSheet.create({
@@ -9,7 +8,7 @@ export const LoadingSpinnerStyles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)', // Matches GlobalStyles.loadingContainer
   },
   logoContainer: {
-    width: 240, // Matches mobile video padding
+    width: 240,
     height: 240,
     justifyContent: 'center',
     alignItems: 'center',
@@ -17,22 +16,32 @@ export const LoadingSpinnerStyles = StyleSheet.create({
   logoWrapper: {
     width: 200,
     height: 200,
-    borderRadius: 100, // Perfect circle
-    overflow: Platform.OS === 'web' ? 'hidden' : 'hidden', // Ensure clipping for PNG on web
+    borderRadius: 100,
+    overflow: Platform.OS === 'web' ? 'hidden' : 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent',
-    borderWidth: 2, // Add branded border
-    borderColor: '#00CED1', // Matches HomeStyles.logo and app branding
+    backgroundColor: 'white',
+    borderWidth: 2,
+    borderColor: '#00CED1',
+    position: 'relative', // Ensure relative positioning for absolute children
   },
   logo: {
     width: 200,
     height: 200,
-    borderRadius: Platform.OS === 'web' ? 100 : 0, // Ensure PNG is circular on web
+    borderRadius: Platform.OS === 'web' ? 100 : 0,
     ...Platform.select({
       web: {
-        objectFit: 'contain', // Scale PNG correctly
+        objectFit: 'contain',
       },
     }),
+    zIndex: 1, // Lower zIndex to ensure the spinner is on top
+  },
+  spinnerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 200,
+    height: 200,
+    zIndex: 2, // Higher zIndex to ensure the spinner is above the logo
   },
 });
