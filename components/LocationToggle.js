@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, TextInput, Switch, TouchableOpacity } from 'react-native';
 import { GlobalStyles } from '../styles/GlobalStyles';
 import { LocationToggleStyles } from '../styles/LocationToggleStyles';
+import { debounce } from '../utils/debounce';
 
 const LocationToggle = ({
   useCurrentLocation,
@@ -17,7 +18,20 @@ const LocationToggle = ({
 }) => {
   const isButtonDisabled = useCurrentLocation
     ? isFetchingSpecies || isFetchingLocation || cityState === 'Location unavailable' || cityState === 'Location permission denied'
-    : isFetchingSpecies || !manualCity || !manualState;
+    : isFetchingSpecies || !manualCity.trim() || !manualState.trim();
+
+  const toggleLocation = useCallback(
+    debounce((value) => {
+      setUseCurrentLocation(value);
+    }, 500),
+    [setUseCurrentLocation]
+  );
+
+  const handleGetSpecies = useCallback(() => {
+    if (!isFetchingSpecies && !isFetchingLocation) {
+      handleFetchSpecies();
+    }
+  }, [isFetchingSpecies, isFetchingLocation, handleFetchSpecies]);
 
   return (
     <View style={[LocationToggleStyles.locationSection]}>
@@ -25,7 +39,7 @@ const LocationToggle = ({
       <View style={LocationToggleStyles.manualLocationContainer}>
         {useCurrentLocation && (
           <Text style={LocationToggleStyles.locationText}>
-            {isFetchingLocation ? 'Fetching location...' : (cityState || 'Location not available')}
+            {isFetchingLocation ? 'Fetching location...' : cityState || 'Location not available'}
           </Text>
         )}
         <TextInput
@@ -34,7 +48,7 @@ const LocationToggle = ({
           value={manualCity}
           onChangeText={setManualCity}
           placeholderTextColor="#999"
-          editable={!useCurrentLocation} // Disable when using current location
+          editable={!useCurrentLocation}
         />
         <TextInput
           style={[LocationToggleStyles.input, useCurrentLocation && { opacity: 0.5 }]}
@@ -42,22 +56,23 @@ const LocationToggle = ({
           value={manualState}
           onChangeText={setManualState}
           placeholderTextColor="#999"
-          editable={!useCurrentLocation} // Disable when using current location
+          editable={!useCurrentLocation}
         />
         <View style={LocationToggleStyles.toggleContainer}>
           <Text style={LocationToggleStyles.toggleLabel}>Use Current Location</Text>
           <Switch
             value={useCurrentLocation}
-            onValueChange={setUseCurrentLocation}
+            onValueChange={toggleLocation}
             trackColor={{ false: '#767577', true: '#00CED1' }}
             thumbColor={useCurrentLocation ? '#fff' : '#f4f3f4'}
+            disabled={isFetchingSpecies || isFetchingLocation}
           />
         </View>
       </View>
       <View style={[GlobalStyles.buttonContainer, GlobalStyles.buttonSectionContainer]}>
         <TouchableOpacity
           style={[GlobalStyles.customButton, isButtonDisabled && GlobalStyles.disabledButton]}
-          onPress={handleFetchSpecies}
+          onPress={handleGetSpecies}
           disabled={isButtonDisabled}
         >
           <Text style={GlobalStyles.buttonText}>

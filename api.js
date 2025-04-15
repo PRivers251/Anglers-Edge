@@ -1,8 +1,26 @@
+
 import axios from 'axios';
 import { OPENAI_API_KEY } from '@env';
 import { logger } from './utils/logger';
 
 const isDebug = process.env.NODE_ENV === 'development';
+
+const getSeason = (date, latitude) => {
+  const month = new Date(date).getMonth();
+  const isNorthernHemisphere = latitude >= 0;
+
+  if (isNorthernHemisphere) {
+    if (month >= 2 && month <= 4) return 'Spring';
+    if (month >= 5 && month <= 7) return 'Summer';
+    if (month >= 8 && month <= 10) return 'Fall';
+    return 'Winter';
+  } else {
+    if (month >= 2 && month <= 4) return 'Fall';
+    if (month >= 5 && month <= 7) return 'Winter';
+    if (month >= 8 && month <= 10) return 'Spring';
+    return 'Summer';
+  }
+};
 
 const getSpeciesPrompt = (cityState) => `
 You are a fishing expert.
@@ -16,12 +34,14 @@ Respond ONLY in this strict JSON format:
 Only return common names. Do not include Markdown or extra text.
 `;
 
-const getAdvicePrompt = (location, species, cityState, currentDate, forecastData, waterData, speciesTempRange, timeOfDay) => `
-You are an elite fishing advisor. Create a detailed, data-driven fishing tip for ${cityState} on ${currentDate} during the ${timeOfDay}.
+const getAdvicePrompt = (location, species, cityState, currentDate, forecastData, waterData, speciesTempRange, timeOfDay, fishingType) => `
+You are an elite fishing advisor. Create a detailed, data-driven fishing tip for ${cityState} on ${currentDate} during the ${timeOfDay} for ${fishingType} fishing.
 
 ${
   location && location.coords ? `User location: latitude ${location.coords.latitude}, longitude ${location.coords.longitude}.` : ''
 }
+Season: ${location && location.coords ? getSeason(currentDate, location.coords.latitude) : 'Not specified'}
+Fishing Type: ${fishingType || 'Not specified'}
 
 Current Conditions:
 - Air Temp: ${forecastData.lowTempF}°F to ${forecastData.highTempF}°F
@@ -40,16 +60,16 @@ Current Conditions:
 
 ${
   species && species !== 'None'
-    ? `Give your BEST advice for catching ${species}. Use all environmental data above. Include:
+    ? `Give your BEST advice for catching ${species} while ${fishingType} fishing. Use all environmental data above, including the season and fishing type which affect spawning, migration, feeding behaviors, and fishing techniques. Include:
 - Ideal bait/lure
-- Location types to fish (e.g., structure, depth)
+- Location types to fish (e.g., structure, depth, nearshore vs. deep water)
 - Time of day influence
-- Strategy based on clarity, current, and temperature
+- Strategy based on clarity, current, temperature, seasonal behaviors, and fishing type
 - Tackle: rod type/length/action and line weight/material
 Respond as if guiding a serious angler familiar with basic techniques.`
-    : `Suggest one species to target based on conditions. Then offer:
+    : `Suggest one species to target based on conditions, season, and ${fishingType} fishing. Then offer:
 - Best bait/lure
-- Strategy based on all data
+- Strategy based on all data, including seasonal behaviors and fishing type
 - Tackle: rod and line details
 - Reasoning for why this species is a good choice now.`
 }
@@ -92,9 +112,9 @@ export const getSpeciesListFromAI = async (cityState) => {
   }
 };
 
-export const getFishingAdvice = async (location, species, cityState, forecastData, waterData, speciesTempRange, timeOfDay) => {
+export const getFishingAdvice = async (location, species, cityState, forecastData, waterData, speciesTempRange, timeOfDay, fishingType) => {
   const currentDate = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
-  const prompt = getAdvicePrompt(location, species, cityState, currentDate, forecastData, waterData, speciesTempRange, timeOfDay);
+  const prompt = getAdvicePrompt(location, species, cityState, currentDate, forecastData, waterData, speciesTempRange, timeOfDay, fishingType);
   try {
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',

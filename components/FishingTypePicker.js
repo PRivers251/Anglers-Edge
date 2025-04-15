@@ -1,51 +1,30 @@
+// File: src/components/FishingTypePicker.js
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, Modal, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, FlatList } from 'react-native';
 import { GlobalStyles } from '../styles/GlobalStyles';
 import { SpeciesPickerStyles } from '../styles/SpeciesPickerStyles';
-import { LocationToggleStyles } from '../styles/LocationToggleStyles';
 
-const SpeciesPicker = ({
-  species,
-  setSpecies,
-  customSpecies,
-  setCustomSpecies,
-  speciesList,
-  isFetchingSpecies,
-}) => {
+const FishingTypePicker = ({ fishingType, setFishingType }) => {
   const [modalVisible, setModalVisible] = React.useState(false);
+  const fishingTypes = ['Inshore', 'Offshore', 'Surf', 'Shore', 'Boat'];
 
-  const handleSelectSpecies = (selectedSpecies) => {
-    setSpecies(selectedSpecies);
+  const handleSelectFishingType = (selectedType) => {
+    setFishingType(selectedType);
     setModalVisible(false);
   };
 
-
   return (
     <View style={SpeciesPickerStyles.speciesSection}>
-      <Text style={GlobalStyles.label}>Select Species</Text>
+      <Text style={GlobalStyles.label}>Select Fishing Type</Text>
       <TouchableOpacity
         style={SpeciesPickerStyles.dropdownButton}
         onPress={() => setModalVisible(true)}
-        disabled={isFetchingSpecies || speciesList.length === 0}
+        disabled={fishingTypes.length === 0}
       >
         <Text style={SpeciesPickerStyles.dropdownText}>
-          {isFetchingSpecies
-            ? 'Loading species...'
-            : speciesList.length === 0
-            ? 'No species available'
-            : species || 'Select a species'}
+          {fishingType || 'Select a fishing type'}
         </Text>
       </TouchableOpacity>
-
-      {species === 'Other' && (
-        <TextInput
-          style={SpeciesPickerStyles.input}
-          placeholder="Enter custom species"
-          value={customSpecies}
-          onChangeText={setCustomSpecies}
-          placeholderTextColor="#999"
-        />
-      )}
 
       <Modal
         animationType="fade"
@@ -56,20 +35,20 @@ const SpeciesPicker = ({
         <View style={GlobalStyles.modalOverlay}>
           <View style={GlobalStyles.modalContent}>
             <FlatList
-              data={speciesList}
+              data={fishingTypes}
               keyExtractor={(item) => item}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[
                     GlobalStyles.dropdownItem,
-                    item === species && GlobalStyles.selectedDateItem,
+                    item === fishingType && GlobalStyles.selectedDateItem,
                   ]}
-                  onPress={() => handleSelectSpecies(item)}
+                  onPress={() => handleSelectFishingType(item)}
                 >
                   <Text
                     style={[
                       GlobalStyles.dropdownItemText,
-                      item === species && GlobalStyles.selectedDateItemText,
+                      item === fishingType && GlobalStyles.selectedDateItemText,
                     ]}
                   >
                     {item}
@@ -90,4 +69,4 @@ const SpeciesPicker = ({
   );
 };
 
-export default SpeciesPicker;
+export default FishingTypePicker;

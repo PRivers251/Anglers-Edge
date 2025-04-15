@@ -1,3 +1,4 @@
+// File: src/hooks/useSpecies.js
 import { useState, useCallback } from 'react';
 import { getSpeciesListFromAI } from '../services/adviceService';
 import { fetchLocationAndWeather } from '../services/locationService';
@@ -15,9 +16,16 @@ export const useSpecies = () => {
 
   const handleFetchSpecies = useCallback(
     debounce(async (useCurrentLocation, cityState, manualCity, manualState, location) => {
+      if (isFetchingSpecies) {
+        if (isDebug) logger.log('Skipping handleFetchSpecies: already fetching');
+        return null;
+      }
+
       setIsFetchingSpecies(true);
-      const targetCityState = useCurrentLocation ? cityState : `${manualCity}, ${manualState}`;
-      if (!targetCityState) {
+      const targetCityState = useCurrentLocation ? cityState : `${manualCity}, ${manualState}`.trim();
+      
+      if (!targetCityState || targetCityState === ',') {
+        if (isDebug) logger.log('No valid targetCityState for species fetch');
         Alert.alert('Error', 'No location specified. Please select a location to fetch species.');
         setSpeciesList([]);
         setIsFetchingSpecies(false);
@@ -29,11 +37,20 @@ export const useSpecies = () => {
         const result = await fetchLocationAndWeather(false, targetCityState, null);
         loc = result.loc;
         if (!loc?.coords) {
+          if (isDebug) logger.log('Failed to resolve manual location coords');
           Alert.alert('Error', 'Failed to resolve location coordinates. Please try a different city or state.');
           setSpeciesList([]);
           setIsFetchingSpecies(false);
           return null;
         }
+      }
+
+      if (!loc?.coords) {
+        if (isDebug) logger.log('No valid location coords for species fetch');
+        Alert.alert('Error', 'Location data unavailable. Please try again.');
+        setSpeciesList([]);
+        setIsFetchingSpecies(false);
+        return null;
       }
 
       try {

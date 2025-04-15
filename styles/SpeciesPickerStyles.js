@@ -26,4 +26,23 @@ export const SpeciesPickerStyles = StyleSheet.create({
     color: '#333',
     fontWeight: '500',
   },
+
+  input: { 
+    height: 50,
+    minHeight: 50,
+    borderColor: '#ccc', 
+    borderWidth: 1, 
+    borderRadius: 10,
+    paddingHorizontal: 15, 
+    marginTop: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+    color: '#333', 
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+    fontSize: 16,
+  },
 });

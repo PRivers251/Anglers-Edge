@@ -1,3 +1,4 @@
+// File: src/hooks/useFishingData.js
 import { useState, useEffect } from 'react';
 import { fetchWeatherData } from '../services/weatherService';
 import { fetchWaterData } from '../services/waterService';
@@ -6,7 +7,7 @@ import { logger } from '../utils/logger';
 
 const isDebug = process.env.NODE_ENV === 'development';
 
-export const useFishingData = (location, species, cityState, date, timeOfDay) => {
+export const useFishingData = (location, species, cityState, date, timeOfDay, fishingType) => {
   const [advice, setAdvice] = useState(null);
   const [forecastData, setForecastData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -18,11 +19,10 @@ export const useFishingData = (location, species, cityState, date, timeOfDay) =>
       setError(null);
 
       try {
-        if (!location?.coords || !date || !timeOfDay) {
-          throw new Error('Missing required parameters');
+        if (!location?.coords || !cityState || !date || !timeOfDay || !fishingType) {
+          throw new Error('Missing required parameters: ' + JSON.stringify({ hasLocation: !!location?.coords, cityState, date, timeOfDay, fishingType }));
         }
 
-        // Fetch weather data
         const weatherResult = await fetchWeatherData(
           location.coords.latitude,
           location.coords.longitude,
@@ -30,7 +30,6 @@ export const useFishingData = (location, species, cityState, date, timeOfDay) =>
           timeOfDay
         );
 
-        // Fetch water data
         const waterData = await fetchWaterData(
           location.coords.latitude,
           location.coords.longitude,
@@ -38,10 +37,8 @@ export const useFishingData = (location, species, cityState, date, timeOfDay) =>
           weatherResult.dailyForecasts
         );
 
-        // Fetch species temperature range
         const speciesTempRange = await getSpeciesTempRange(species !== 'None' ? species : null);
 
-        // Fetch fishing advice
         const adviceResult = await getFishingAdvice(
           location,
           species,
@@ -49,7 +46,8 @@ export const useFishingData = (location, species, cityState, date, timeOfDay) =>
           weatherResult.forecastMetrics,
           waterData,
           speciesTempRange,
-          timeOfDay
+          timeOfDay,
+          fishingType
         );
 
         setForecastData({
@@ -69,7 +67,7 @@ export const useFishingData = (location, species, cityState, date, timeOfDay) =>
     };
 
     fetchData();
-  }, [location, species, cityState, date, timeOfDay]);
+  }, [location, species, cityState, date, timeOfDay, fishingType]);
 
   return { advice, forecastData, loading, error };
 };

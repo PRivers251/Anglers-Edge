@@ -1,3 +1,4 @@
+// File: src/screens/results.js
 import React, { useMemo } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScrollView, View, ImageBackground, TouchableOpacity, Text, Image } from 'react-native';
@@ -11,20 +12,28 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { useMinimumLoading } from '../hooks/useMinimumLoading';
 import AdviceCard from '../components/AdviceCard';
 import ForecastCard from '../components/ForecastCard';
+import { logger } from '../utils/logger';
+
+const isDebug = process.env.NODE_ENV === 'development';
 
 export default function ResultsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
   const location = useMemo(() => (params.location ? JSON.parse(params.location) : null), [params.location]);
-  const { species, cityState, date, timeOfDay } = params;
+  const { species, cityState, date, timeOfDay, fishingType } = params;
+
+  if (isDebug) {
+    logger.log('ResultsScreen params:', { cityState, species, date, timeOfDay, fishingType });
+  }
 
   const { advice, forecastData, loading, error } = useFishingData(
     location,
     species,
     cityState,
     date,
-    timeOfDay
+    timeOfDay,
+    fishingType
   );
 
   const {
@@ -86,12 +95,10 @@ export default function ResultsScreen() {
   const avgTemp = useMemo(() => {
     if (!forecastData?.forecastMetrics) return null;
 
-    // Prefer hourly temperature if available
     if (forecastData.forecastMetrics.hourlyTempF) {
       return Math.round(forecastData.forecastMetrics.hourlyTempF);
     }
 
-    // Fallback to daily-based estimation
     const { lowTempF, highTempF } = forecastData.forecastMetrics;
     const range = highTempF - lowTempF;
 
@@ -131,7 +138,7 @@ export default function ResultsScreen() {
         <View style={GlobalStyles.header}>
           <Text style={GlobalStyles.title}>{formatDate(date)}</Text>
           <Text style={ResultsStyles.subtitle}>
-            {species || 'Unknown Species'} Fishing in {cityState || 'Unknown Location'}
+            {species || 'Recommended Species'} {fishingType} Fishing in {cityState || 'Unknown Location'}
           </Text>
         </View>
         {forecastData?.forecastMetrics && (
@@ -169,7 +176,7 @@ export default function ResultsScreen() {
                     ...forecastData.forecastMetrics,
                     lowTempF: undefined,
                     highTempF: undefined,
-                    hourlyTempF: undefined, // Exclude hourlyTempF from ForecastCard
+                    hourlyTempF: undefined,
                   }
                 : null
             }

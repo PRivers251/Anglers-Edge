@@ -1,103 +1,159 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+// File: src/hooks/useLocation.js
+import { useState, useEffect, useRef } from 'react';
+import * as Location from 'expo-location';
 import axios from 'axios';
 import { GOOGLE_MAPS_API_KEY } from '@env';
-import { getCurrentLocation, fetchLocationAndWeather } from '../services/locationService';
+import { logger } from '../utils/logger';
 import { debounce } from '../utils/debounce';
+
+const isDebug = process.env.NODE_ENV === 'development';
 
 export const useLocation = () => {
   const [useCurrentLocation, setUseCurrentLocation] = useState(false);
   const [location, setLocation] = useState(null);
-  const [cityState, setCityState] = useState('Select a location'); // Default non-empty string
+  const [cityState, setCityState] = useState('');
   const [manualCity, setManualCity] = useState('');
   const [manualState, setManualState] = useState('');
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
-  const [lastLocationFetch, setLastLocationFetch] = useState(null);
+  const abortControllerRef = useRef(new AbortController());
+  const locationModeRef = useRef(useCurrentLocation);
 
-  const initializeCurrentLocation = useCallback(async () => {
-    setIsFetchingLocation(true);
-    if (lastLocationFetch) {
-      setLocation(lastLocationFetch);
-      try {
-        const response = await axios.get(
-          `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lastLocationFetch.coords.latitude},${lastLocationFetch.coords.longitude}&key=${GOOGLE_MAPS_API_KEY}`
-        );
-        if (response.data.results && response.data.results.length > 0) {
-          const addressComponents = response.data.results[0].address_components;
-          const city = addressComponents.find(comp => comp.types.includes('locality'))?.long_name || 'Unknown City';
-          const state = addressComponents.find(comp => comp.types.includes('administrative_area_level_1'))?.short_name || 'Unknown State';
-          const resolvedCityState = `${city}, ${state}`;
-          setCityState(resolvedCityState);
-          setManualCity(city);
-          setManualState(state);
-        } else {
-          setCityState('Location unavailable');
-        }
-      } catch (error) {
-        console.error('Geocoding Error:', error.message);
-        setCityState('Location unavailable');
-      }
-      setIsFetchingLocation(false);
+  const fetchLocation = debounce(async () => {
+    abortControllerRef.current.abort();
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
+    if (!locationModeRef.current) {
+      setLocation(null);
+      setCityState('');
       return;
     }
 
-    const loc = await getCurrentLocation();
-    if (loc) {
-      setLocation(loc);
-      setLastLocationFetch(loc);
-      try {
-        const response = await axios.get(
-          `https://maps.googleapis.com/maps/api/geocode/json?latlng=${loc.coords.latitude},${loc.coords.longitude}&key=${GOOGLE_MAPS_API_KEY}`
-        );
-        if (response.data.results && response.data.results.length > 0) {
-          const addressComponents = response.data.results[0].address_components;
-          const city = addressComponents.find(comp => comp.types.includes('locality'))?.long_name || 'Unknown City';
-          const state = addressComponents.find(comp => comp.types.includes('administrative_area_level_1'))?.short_name || 'Unknown State';
-          const resolvedCityState = `${city}, ${state}`;
-          setCityState(resolvedCityState);
-          setManualCity(city);
-          setManualState(state);
-        } else {
-          setCityState('Location unavailable');
+    setIsFetchingLocation(true);
+    try {
+      const loc = await getCurrentLocation(signal);
+      if (loc) {
+        setLocation((prev) => {
+          if (
+            prev?.coords?.latitude === loc.coords.latitude &&
+            prev?.coords?.longitude === loc.coords.longitude
+          ) {
+            if (isDebug) logger.log('Location unchanged, skipping update');
+            return prev;
+          }
+          if (isDebug) logger.log('Updating location:', loc.coords);
+          return loc;
+        });
+        try {
+          const response = await axios.get(
+            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${loc.coords.latitude},${loc.coords.longitude}&key=${GOOGLE_MAPS_API_KEY}`,
+            { signal }
+          );
+          if (response.data.results && response.data.results.length > 0) {
+            const addressComponents = response.data.results[0].address_components;
+            let city = '';
+            let state = '';
+            for (const component of addressComponents) {
+              if (component.types.includes('locality')) {
+                city = component.short_name;
+              }
+              if (component.types.includes('administrative_area_level_1')) {
+                state = component.short_name;
+              }
+            }
+            const newCityState = city && state ? `${city}, ${state}` : 'Unknown Location';
+            setCityState((prev) => {
+              if (prev === newCityState) {
+                if (isDebug) logger.log('CityState unchanged, skipping update');
+                return prev;
+              }
+              if (isDebug) logger.log('Updating cityState:', newCityState);
+              return newCityState;
+            });
+          } else {
+            setCityState('Unknown Location');
+          }
+        } catch (error) {
+          if (error.name === 'AbortError') {
+            if (isDebug) logger.log('Location fetch aborted');
+            return;
+          }
+          if (isDebug) logger.error('Reverse Geocoding Error:', error.message);
+          setCityState('Unknown Location');
         }
-      } catch (error) {
-        console.error('Geocoding Error:', error.message);
-        setCityState('Location unavailable');
+      } else {
+        setCityState('Location permission denied');
       }
-    } else {
-      console.error('Location permission denied or fetch failed');
-      setCityState('Location permission denied');
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        if (isDebug) logger.log('Location fetch aborted');
+        return;
+      }
+      if (isDebug) logger.error('Location Fetch Error:', error.message);
+      setCityState('Location unavailable');
+    } finally {
+      setIsFetchingLocation(false);
     }
-    setIsFetchingLocation(false);
-  }, [lastLocationFetch]);
-
-  const debouncedInitializeCurrentLocation = useMemo(
-    () => debounce(initializeCurrentLocation, 1000),
-    [initializeCurrentLocation]
-  );
+  }, 1000);
 
   useEffect(() => {
-    if (useCurrentLocation) {
-      debouncedInitializeCurrentLocation();
-    } else {
-      if (location && !manualCity && !manualState) {
-        setLocation(null);
-        setLastLocationFetch(null);
-        setIsFetchingLocation(false);
-        setCityState('Select a location');
-      }
+    locationModeRef.current = useCurrentLocation;
+    let isMounted = true;
+    if (isMounted && useCurrentLocation) fetchLocation();
+    else if (!useCurrentLocation) {
+      setLocation(null);
+      const newCityState = manualCity && manualState ? `${manualCity}, ${manualState}` : '';
+      setCityState(newCityState);
+      abortControllerRef.current.abort();
+      abortControllerRef.current = new AbortController();
+      if (isDebug) logger.log('Switched to manual mode, cityState:', newCityState);
     }
-  }, [useCurrentLocation, manualCity, manualState, debouncedInitializeCurrentLocation]);
+    return () => {
+      isMounted = false;
+      abortControllerRef.current.abort();
+    };
+  }, [useCurrentLocation, manualCity, manualState]);
 
-  const resolveManualLocation = async (targetCityState) => {
-    const result = await fetchLocationAndWeather(false, targetCityState, null);
-    const loc = result.loc;
-    if (!loc?.coords) {
-      console.error('Failed to resolve location coordinates:', { targetCityState, manualCity, manualState });
+  const resolveManualLocation = async (cityStateString) => {
+    if (!cityStateString || cityStateString === ',') {
+      if (isDebug) logger.log('Invalid cityStateString for geocoding');
       return null;
     }
-    setLocation(loc);
-    setLastLocationFetch(loc);
-    return loc;
+    try {
+      const response = await axios.get(
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(cityStateString)}&key=${GOOGLE_MAPS_API_KEY}`
+      );
+      if (response.data.results && response.data.results.length > 0) {
+        const { lat, lng } = response.data.results[0].geometry.location;
+        if (isDebug) logger.log('Resolved manual location:', { lat, lng });
+        return { coords: { latitude: lat, longitude: lng } };
+      }
+      if (isDebug) logger.log('No geocoding results for:', cityStateString);
+      return null;
+    } catch (error) {
+      if (isDebug) logger.error('Geocoding Error:', error.message);
+      return null;
+    }
+  };
+
+  const getCurrentLocation = async (signal) => {
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      if (isDebug) logger.error('Location permission denied');
+      return null;
+    }
+    try {
+      const loc = await Location.getCurrentPositionAsync({ signal });
+      if (isDebug) logger.log('Current location fetched:', loc.coords);
+      return loc;
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        if (isDebug) logger.log('Current location fetch aborted');
+        return null;
+      }
+      if (isDebug) logger.error('Location fetch error:', error.message);
+      return null;
+    }
   };
 
   return {

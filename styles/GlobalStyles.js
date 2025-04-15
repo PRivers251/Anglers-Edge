@@ -121,6 +121,7 @@ export const GlobalStyles = StyleSheet.create({
     shadowRadius: 4, 
     elevation: 5, 
     marginBottom: 20, 
-    marginHorizontal: 30 
+    marginHorizontal: 30,
+    width: '80%'
   },
 });

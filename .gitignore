@@ -36,4 +36,4 @@ yarn-error.*
 *.tsbuildinfo
 
 # supportfiles
-code_content_analysis.json
+code_analysis_*.json

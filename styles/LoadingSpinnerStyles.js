@@ -8,19 +8,20 @@ export const LoadingSpinnerStyles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)', // Matches GlobalStyles.loadingContainer
   },
   logoContainer: {
-    width: 240,
-    height: 240,
+    width: 199,
+    height: 199,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 100,
   },
   logoWrapper: {
     width: 200,
     height: 200,
     borderRadius: 100,
-    overflow: 'visible',
+    overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'white',
     borderWidth: 2,
     borderColor: '#00CED1',
     position: 'relative',
@@ -28,7 +29,7 @@ export const LoadingSpinnerStyles = StyleSheet.create({
   logo: {
     width: 150, // Reduced to ensure spinner is fully visible around it
     height: 150,
-    borderRadius: Platform.OS === 'web' ? 75 : 0,
+    borderRadius: Platform.OS === 'web' ? 75 : 100,
     ...Platform.select({
       web: {
         objectFit: 'contain',
@@ -43,6 +44,7 @@ export const LoadingSpinnerStyles = StyleSheet.create({
     width: 180,
     height: 180,
     zIndex: 2,
+    borderRadius: 100,
   },
   webSpinnerContainer: {
     position: 'absolute',
@@ -51,6 +53,7 @@ export const LoadingSpinnerStyles = StyleSheet.create({
     width: 180,
     height: 180,
     zIndex: 2,
+    borderRadius: 100,
     justifyContent: 'center',
     alignItems: 'center',
   },

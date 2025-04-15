@@ -116,7 +116,7 @@ export const ResultsStyles = StyleSheet.create({
     marginTop: 4, // Space between the temp/icon row and the subtitle
   },
   temperatureText: {
-    fontSize: 100, // Increased from 24 to 32 for larger text
+    fontSize: 75, // Increased from 24 to 32 for larger text
     fontWeight: 'bold',
     color: '#fff', // Changed to white for better contrast against background
     textShadowColor: '#000',

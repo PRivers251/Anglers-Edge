@@ -1,3 +1,4 @@
+// File: src/screens/index.js
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -13,6 +14,7 @@ import {
 import LocationToggle from '../components/LocationToggle';
 import SpeciesPicker from '../components/SpeciesPicker';
 import DateSelector from '../components/DateSelector';
+import FishingTypePicker from '../components/FishingTypePicker';
 import { GlobalStyles } from '../styles/GlobalStyles';
 import { HomeStyles } from '../styles/HomeStyles';
 import { useAuth } from '../hooks/useAuth';
@@ -55,13 +57,15 @@ export default function HomeScreen() {
   } = useSpecies();
   const [date, setDate] = useState(new Date());
   const [timeOfDay, setTimeOfDay] = useState('Morning');
+  const [fishingType, setFishingType] = useState('');
   const { isLoading, handleSubmit } = useFormSubmission(
     location,
     species,
     customSpecies,
     cityState,
     date,
-    timeOfDay
+    timeOfDay,
+    fishingType
   );
   const [isVerifying, setIsVerifying] = useState(false);
   const showLoading = useMinimumLoading(loading || isVerifying, 1000);
@@ -103,25 +107,58 @@ export default function HomeScreen() {
   }, [router]);
 
   const fetchSpecies = useCallback(async () => {
+    if (isFetchingSpecies || isFetchingLocation) {
+      if (isDebug) logger.log('Skipping fetchSpecies: fetching in progress');
+      return;
+    }
+    let targetCityState = cityState;
     let loc = location;
     if (!useCurrentLocation) {
-      loc = await resolveManualLocation(`${manualCity}, ${manualState}`);
-      if (loc) setLocation(loc);
+      if (!manualCity.trim() || !manualState.trim()) {
+        if (isDebug) logger.log('Skipping fetchSpecies: invalid manual location');
+        return;
+      }
+      targetCityState = `${manualCity}, ${manualState}`.trim();
+      loc = await resolveManualLocation(targetCityState);
+      if (loc) {
+        setLocation((prev) => {
+          if (
+            prev?.coords?.latitude === loc.coords.latitude &&
+            prev?.coords?.longitude === loc.coords.longitude
+          ) {
+            if (isDebug) logger.log('Location unchanged, skipping update');
+            return prev;
+          }
+          if (isDebug) logger.log('Updating location from manual:', loc.coords);
+          return loc;
+        });
+      } else {
+        if (isDebug) logger.log('Failed to resolve manual location');
+        return;
+      }
     }
-    if (loc) {
+    if (!targetCityState) {
+      if (isDebug) logger.log('No valid cityState for fetchSpecies');
+      return;
+    }
+    if (loc?.coords) {
       if (isDebug) {
-        logger.log('Fetching species for location:', cityState || `${manualCity}, ${manualState}`);
+        logger.log('Fetching species for location:', targetCityState);
       }
       await handleFetchSpecies(useCurrentLocation, cityState, manualCity, manualState, loc);
+    } else {
+      if (isDebug) logger.log('No valid location coords for fetchSpecies');
     }
   }, [
-    location,
     useCurrentLocation,
     manualCity,
     manualState,
     cityState,
+    isFetchingSpecies,
+    isFetchingLocation,
     resolveManualLocation,
     handleFetchSpecies,
+    location,
   ]);
 
   if (showLoading) {
@@ -152,7 +189,7 @@ export default function HomeScreen() {
             <LocationToggle
               useCurrentLocation={useCurrentLocation}
               setUseCurrentLocation={setUseCurrentLocation}
-              cityState={cityState || 'Loading...'}
+              cityState={cityState || 'Select a location'}
               manualCity={manualCity}
               manualState={manualState}
               setManualCity={setManualCity}
@@ -170,6 +207,7 @@ export default function HomeScreen() {
               isFetchingSpecies={isFetchingSpecies}
             />
             <DateSelector date={date} setDate={setDate} timeOfDay={timeOfDay} setTimeOfDay={setTimeOfDay} />
+            <FishingTypePicker fishingType={fishingType} setFishingType={setFishingType} />
             <View style={[HomeStyles.buttonSection, GlobalStyles.buttonSectionContainer]}>
               <View style={GlobalStyles.buttonContainer}>
                 <TouchableOpacity
@@ -179,7 +217,9 @@ export default function HomeScreen() {
                       speciesList.length === 0 ||
                       (species === 'Other' && !customSpecies) ||
                       !location?.coords ||
-                      !timeOfDay) &&
+                      !cityState ||
+                      !timeOfDay ||
+                      !fishingType) &&
                       GlobalStyles.disabledButton,
                   ]}
                   onPress={handleSubmit}
@@ -188,7 +228,9 @@ export default function HomeScreen() {
                     speciesList.length === 0 ||
                     (species === 'Other' && !customSpecies) ||
                     !location?.coords ||
-                    !timeOfDay
+                    !cityState ||
+                    !timeOfDay ||
+                    !fishingType
                   }
                 >
                   <Text style={GlobalStyles.buttonText}>
@@ -198,7 +240,7 @@ export default function HomeScreen() {
               </View>
               <View style={GlobalStyles.buttonContainer}>
                 <TouchableOpacity
-                  style={[GlobalStyles.customButton, GlobalStyles.backButton]}
+                  style={[GlobalStyles.customButton]}
                   onPress={handleLogout}
                 >
                   <Text style={GlobalStyles.buttonText}>Log Out</Text>
